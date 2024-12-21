@@ -2,6 +2,8 @@ mod algorithms;
 mod graph;
 mod parameters;
 mod plugins;
+mod data;
+
 use plugins::SetupPlugin;
 
 use bevy::prelude::*;

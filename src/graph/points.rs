@@ -1,20 +1,10 @@
 pub mod points {
 
     use bevy::prelude::*;
+
     use crate::parameters::Parameters;
     use crate::algorithms::*;
-
-    #[derive(Resource)]
-    pub struct Points(pub [[f32; 2]; 3]);
-
-    pub fn set_points(mut commands: Commands) {
-        let points: [[f32; 2]; 3] = [
-            [1.0,1.0],
-            [2.0,3.0],
-            [3.0,3.0],
-        ];
-        commands.insert_resource(Points(points));
-    }
+    use crate::data::Points;
 
     pub fn draw_points(
         mut commands: Commands,
@@ -23,7 +13,7 @@ pub mod points {
         points: Res<Points>,
         parameters: Res<Parameters>,
     ) {
-        let ((min_x, max_x), (min_y, max_y)) = min_max_mat2(&points.0);
+        let ((min_x, max_x), (min_y, max_y), _) = min_max(&points);
 
         let drawing_width = parameters.width - 2.0 * parameters.padding;
         let drawing_height = parameters.height - 2.0 * parameters.padding;
@@ -36,16 +26,16 @@ pub mod points {
         let center_x = (min_x + max_x) / 2.0;
         let center_y = (min_y + max_y) / 2.0;
 
-        for &point in points.0.iter() {
-            let tx = point[0] - center_x;
-            let ty = point[1] - center_y;
+        for point in points.0.iter() {
+            let tx = point.0 - center_x;
+            let ty = point.1 - center_y;
 
             let sx = tx * scale;
             let sy = ty * scale;
 
             commands.spawn((
                 Mesh2d(meshes.add(Circle::new(parameters.points_size))),
-                MeshMaterial2d(materials.add(Color::BLACK)),
+                MeshMaterial2d(materials.add(point.3)),
                 Transform::from_xyz(sx, sy, 1.0),
             ));
         }

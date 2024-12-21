@@ -1,25 +1,19 @@
 pub mod graph {
 
-    pub fn min_max_mat2(points: &[[f32; 2]]) -> ((f32, f32), (f32, f32)) {
-        points.iter().fold(
-            ((f32::INFINITY, f32::NEG_INFINITY), (f32::INFINITY, f32::NEG_INFINITY)),
-            |((min_x, max_x), (min_y, max_y)), &[x, y]| {
-                (
-                    (min_x.min(x), max_x.max(x)),
-                    (min_y.min(y), max_y.max(y)),
-                )
-            },
-        )
-    }
+    use crate::data::Points;
 
-    pub fn min_max_mat3(points: &[[f32; 3]]) -> ((f32, f32), (f32, f32), (f32, f32)) {
-        points.iter().fold(
-            ((f32::INFINITY, f32::NEG_INFINITY), (f32::INFINITY, f32::NEG_INFINITY), (f32::INFINITY, f32::NEG_INFINITY)),
-            |((min_x, max_x), (min_y, max_y), (min_z, max_z)), &[x, y, z]| {
+    pub fn min_max(points: &Points) -> ((f32, f32), (f32, f32), (f32, f32)) {
+        points.0.iter().fold(
+            (
+                (f32::INFINITY, f32::NEG_INFINITY), // min_x, max_x
+                (f32::INFINITY, f32::NEG_INFINITY), // min_y, max_y
+                (f32::INFINITY, f32::NEG_INFINITY), // min_z, max_z
+            ),
+            |((min_x, max_x), (min_y, max_y), (min_z, max_z)), point| {
                 (
-                    (min_x.min(x), max_x.max(x)),
-                    (min_y.min(y), max_y.max(y)),
-                    (min_y.min(z), max_y.max(z)),
+                    (min_x.min(point.0), max_x.max(point.0)),
+                    (min_y.min(point.1), max_y.max(point.1)),
+                    (min_z.min(point.2), max_z.max(point.2)),
                 )
             },
         )
