@@ -2,12 +2,12 @@ pub mod graph {
 
     use crate::data::Points;
 
-    pub fn min_max(points: &Points) -> ((f32, f32), (f32, f32), (f32, f32)) {
+    pub fn min_max(points: &Points) -> ((f64, f64), (f64, f64), (f64, f64)) {
         points.0.iter().fold(
             (
-                (f32::INFINITY, f32::NEG_INFINITY), // min_x, max_x
-                (f32::INFINITY, f32::NEG_INFINITY), // min_y, max_y
-                (f32::INFINITY, f32::NEG_INFINITY), // min_z, max_z
+                (f64::INFINITY, f64::NEG_INFINITY), // min_x, max_x
+                (f64::INFINITY, f64::NEG_INFINITY), // min_y, max_y
+                (f64::INFINITY, f64::NEG_INFINITY), // min_z, max_z
             ),
             |((min_x, max_x), (min_y, max_y), (min_z, max_z)), point| {
                 (

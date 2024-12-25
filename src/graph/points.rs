@@ -34,9 +34,9 @@ pub mod points {
             let sy = ty * scale;
 
             commands.spawn((
-                Mesh2d(meshes.add(Circle::new(parameters.points_size))),
+                Mesh2d(meshes.add(Circle::new(parameters.points_size as f32))),
                 MeshMaterial2d(materials.add(point.3)),
-                Transform::from_xyz(sx, sy, 1.0),
+                Transform::from_xyz(sx as f32, sy as f32, 1.0),
             ));
         }
     }

@@ -3,19 +3,19 @@ pub mod models {
     use bevy::color::palettes::css as color;
     use rand::Rng;
 
-    pub struct Point(pub f32, pub f32, pub f32, pub Color); // x, y, z, color
+    pub struct Point(pub f64, pub f64, pub f64, pub Color); // x, y, z, color
 
     #[derive(Resource, Default)]
     pub struct Points(pub Vec<Point>);
 
     #[derive(Resource, Default)]
     pub enum DataModel {
-        #[default]
         LinearSimple,
         LinearMultiple,
         XOR,
         Cross,
         MultiLinear3Classes,
+        #[default]
         MultiCross,
         LinearSimple2d,
         LinearSimple3d,
@@ -57,17 +57,15 @@ pub mod models {
         let mut rng = rand::thread_rng();
         let mut pts = Vec::with_capacity(100);
 
-        // 50 points ~ autour de (1, 1), label = +1 => BLEU
         for _ in 0..50 {
-            let x = rng.gen::<f32>() * 0.9 + 1.0;
-            let y = rng.gen::<f32>() * 0.9 + 1.0;
+            let x = rng.gen::<f64>() * 0.9 + 1.0;
+            let y = rng.gen::<f64>() * 0.9 + 1.0;
             pts.push(Point(x, y, 0.0, Color::from(color::BLUE)));
         }
 
-        // 50 points ~ autour de (2, 2), label = -1 => ROUGE
         for _ in 0..50 {
-            let x = rng.gen::<f32>() * 0.9 + 2.0;
-            let y = rng.gen::<f32>() * 0.9 + 2.0;
+            let x = rng.gen::<f64>() * 0.9 + 2.0;
+            let y = rng.gen::<f64>() * 0.9 + 2.0;
             pts.push(Point(x, y, 0.0, Color::from(color::RED)));
         }
 
@@ -88,8 +86,8 @@ pub mod models {
         let mut pts = Vec::with_capacity(500);
 
         for _ in 0..500 {
-            let x: f32 = rng.gen_range(-1.0..1.0);
-            let y: f32 = rng.gen_range(-1.0..1.0);
+            let x: f64 = rng.gen_range(-1.0..1.0);
+            let y: f64 = rng.gen_range(-1.0..1.0);
             let label = if x.abs() <= 0.3 || y.abs() <= 0.3 { 1 } else { -1 };
             let color = if label == 1 { Color::from(color::BLUE) } else { Color::from(color::RED) };
             pts.push(Point(x, y, 0.0, color));
@@ -132,11 +130,11 @@ pub mod models {
         let mut pts = Vec::with_capacity(1000);
 
         for _ in 0..1000 {
-            let x = rng.gen_range(-1.0..1.0);
-            let y = rng.gen_range(-1.0..1.0);
+            let x: f64 = rng.gen_range(-1.0..1.0);
+            let y: f64 = rng.gen_range(-1.0..1.0);
 
-            let cond_blue: f32 = x % 0.5;
-            let cond_red: f32  = y % 0.5;
+            let cond_blue: f64 = x % 0.5;
+            let cond_red: f64  = y % 0.5;
 
             let cond_blue_ok = cond_blue.abs() <= 0.25 && cond_red.abs() > 0.25;
             let cond_red_ok  = cond_blue.abs() > 0.25  && cond_red.abs() <= 0.25;

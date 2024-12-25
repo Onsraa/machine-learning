@@ -4,7 +4,7 @@ pub mod grid {
     use crate::parameters::Parameters;
 
     #[derive(Resource)]
-    pub struct Grid(pub f32, f32);
+    pub struct Grid(pub f64, f64);
 
     pub fn set_grid(mut commands: Commands, parameters: Res<Parameters>) {
         commands.insert_resource(Grid(parameters.width, parameters.height));
@@ -17,7 +17,7 @@ pub mod grid {
         grid: Res<Grid>
     ) {
         commands.spawn((
-            Mesh2d(meshes.add(Rectangle::new(grid.0, grid.1))),
+            Mesh2d(meshes.add(Rectangle::new(grid.0 as f32, grid.1 as f32))),
             MeshMaterial2d(materials.add(Color::WHITE)),
             Transform::default()
         )
