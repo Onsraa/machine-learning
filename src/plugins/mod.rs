@@ -1,3 +1,4 @@
-mod setup;
+pub mod setup;
+pub mod plots;
+pub mod models;
 
-pub use setup::setup::SetupPlugin;

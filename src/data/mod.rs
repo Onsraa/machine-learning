@@ -1,3 +1,1 @@
-mod models;
-
-pub use models::models::*;
+pub mod models;

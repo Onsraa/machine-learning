@@ -1,19 +1,19 @@
-mod algorithms;
 mod graph;
-mod parameters;
 mod plugins;
 mod data;
 
-use plugins::SetupPlugin;
-
 use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
-use nalgebra::*;
+use crate::plugins::models::ModelsPlugin;
+use crate::plugins::plots::PlotsPlugins;
+use crate::plugins::setup::SetupPlugin;
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugins(SetupPlugin)
         .add_plugins(EguiPlugin)
+        .add_plugins(PlotsPlugins)
+        .add_plugins(ModelsPlugin)
         .run();
 }
