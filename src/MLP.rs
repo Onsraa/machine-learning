@@ -1,7 +1,5 @@
-
 use rand::Rng; // For random number generation
 
-// Perceptron Linear Model
 // Start init Weight Vectors (scalars) W =[W0,W1,W2,...,Wn]
 let points: [[f64; 2]; 3] = [
     [1.0, 1.0],
@@ -25,6 +23,7 @@ pub struct MyMLP {
 
 impl MyMLP {
     pub fn new(npl: &[usize]) -> Self {
+
         let d = npl.to_vec();
         let l = d.len() - 1;
 
@@ -59,6 +58,18 @@ impl MyMLP {
         Self { d, l, w, x, deltas }
     }
 
+    //  ReLU function
+    fn relu(x: f64) -> f64 {
+        x.max(0.0)  // Returns 0 if x < 0, otherwise x
+    }
+
+    fn softmax(x: &[f64]) -> Vec<f64> {
+        let max_val = x.iter().cloned().fold(f64::NEG_INFINITY, f64::max); // Find max for stability
+        let exp_x: Vec<f64> = x.iter().map(|&val| (val - max_val).exp()).collect();
+        let sum_exp_x: f64 = exp_x.iter().sum();
+        exp_x.iter().map(|&val| val / sum_exp_x).collect()
+    }
+
     fn propagate(&mut self, inputs: &[f64], is_classification: bool) {
         // Set input layer activations
         for j in 1..=self.d[0] {
@@ -73,8 +84,16 @@ impl MyMLP {
                     total += self.w[l][i][j] * self.x[l - 1][i];
                 }
                 self.x[l][j] = total;
-                if is_classification || l != self.l {
-                    self.x[l][j] = total.tanh();
+                
+                if is_classification && l == self.l { 
+                    // Apply softmax to the output layer:
+                    let output_values: Vec<f64> = self.x[l][1..].to_vec();
+                    let softmax_output = Self::softmax(&output_values);
+                    for (k, &val) in softmax_output.iter().enumerate() {
+                        self.x[l][k + 1] = val;
+                    }
+                } else if l != self.l { // Hidden layers (still use ReLU)
+                    self.x[l][j] = Self::relu(self.x[l][j]);
                 }
             }
         }
@@ -85,6 +104,11 @@ impl MyMLP {
         self.x[self.l][1..].to_vec()
     }
 
+    // Define ReLU derivative function (for backpropagation)
+    fn relu_derivative(x: f64) -> f64 {
+        if x > 0.0 { 1.0 } else { 0.0 }
+    }
+
     pub fn train(
         &mut self,
         dataset_inputs: &[Vec<f64>],
@@ -93,6 +117,7 @@ impl MyMLP {
         iterations: usize,
         is_classification: bool,
     ) -> Vec<f64> {
+
         let mut losses = vec![];
 
         for _ in 0..iterations {
@@ -106,29 +131,34 @@ impl MyMLP {
 
             // Compute loss and output layer deltas
             let mut loss = 0.0;
+
             for j in 1..=self.d[self.l] {
                 let error = self.x[self.l][j] - outputs[j - 1];
                 loss += error.powi(2);
                 self.deltas[self.l][j] = error;
+
                 if is_classification {
-                    self.deltas[self.l][j] *= 1.0 - self.x[self.l][j].tanh().powi(2);
+                    // Delta calculation for softmax output
+                    self.deltas[self.l][j] = error;
+                    //self.deltas[self.l][j] *= Self::relu_derivative(self.x[self.l][j]);
+                    //self.deltas[self.l][j] *= 1.0 - self.x[self.l][j].tanh().powi(2);
                 }
             }
-            loss /= self.d[self.l] as f64;
-            losses.push(loss);
 
-            // Backpropagation
+            // Compute hidden layer deltas
             for l in (2..=self.l).rev() {
                 for i in 1..=self.d[l - 1] {
                     let mut total = 0.0;
                     for j in 1..=self.d[l] {
                         total += self.w[l][i][j] * self.deltas[l][j];
                     }
-                    self.deltas[l - 1][i] = (1.0 - self.x[l - 1][i].tanh().powi(2)) * total;
+                    self.deltas[l - 1][i] = Self::relu_derivative(self.x[l - 1][i]) * total;
                 }
             }
 
-            // Update weights
+            loss /= self.d[self.l] as f64;
+            losses.push(loss);
+            
             for l in 1..=self.l {
                 for i in 0..=self.d[l - 1] {
                     for j in 1..=self.d[l] {
@@ -137,23 +167,13 @@ impl MyMLP {
                 }
             }
         }
-
+       
         losses
     }
 }
 
-
-let model = MyMLP::new(&[2, 2, 1]);
-
-    // Print weights (W)
-    println!("Weights (W): {:?}", model.w);
-
-    // Print activations (X)
-    println!("Activations (X): {:?}", model.x);
-
-    // Print deltas
-    println!("Deltas: {:?}", model.deltas);
-
+// Train model
+let mut model = MyMLP::new(&[2, 2, 1]);
 
 let train_losses = model.train(
     &all_dataset_inputs,     // Reference to the dataset inputs
