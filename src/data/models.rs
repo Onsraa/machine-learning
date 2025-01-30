@@ -9,11 +9,11 @@ pub struct Points(pub Vec<Point>);
 
 #[derive(Resource, Default)]
 pub enum DataModel {
+    #[default]
     LinearSimple,
     LinearMultiple,
     XOR,
     Cross,
-    #[default]
     MultiLinear3Classes,
     MultiCross,
     LinearSimple2d,
@@ -163,11 +163,19 @@ fn create_linear_simple_2d_model() -> Vec<Point> {
 }
 
 fn create_linear_simple_3d_model() -> Vec<Point> {
-    vec![]
+    vec![
+        Point(1.0, 1.0, 2.0, Color::from(color::BLACK)),
+        Point(2.0, 2.0, 3.0, Color::from(color::BLACK)),
+        Point(3.0, 1.0, 2.5, Color::from(color::BLACK)),
+    ]
 }
 
 fn create_linear_tricky_3d_model() -> Vec<Point> {
-    vec![]
+    vec![
+        Point(1.0, 1.0, 1.0, Color::from(color::BLACK)),
+        Point(2.0, 2.0, 2.0, Color::from(color::BLACK)),
+        Point(3.0, 3.0, 3.0, Color::from(color::BLACK)),
+    ]
 }
 
 fn create_non_linear_simple_2d_model() -> Vec<Point> {
@@ -179,5 +187,10 @@ fn create_non_linear_simple_2d_model() -> Vec<Point> {
 }
 
 fn create_non_linear_simple_3d_model() -> Vec<Point> {
-    vec![]
+    vec![
+        Point(1.0, 0.0, 2.0, Color::from(color::BLACK)),
+        Point(0.0, 1.0, 1.0, Color::from(color::BLACK)),
+        Point(1.0, 1.0, -2.0, Color::from(color::BLACK)),
+        Point(0.0, 0.0, -1.0, Color::from(color::BLACK)),
+    ]
 }
