@@ -109,10 +109,10 @@ pub fn draw_points(
     for point in data_points.iter() {
         commands.entity(point).despawn();
     }
-    let scale_factor = AXIS_LENGTH / 2.0 * 0.8;
+    let scale_factor = AXIS_LENGTH / 2.0 * 0.9;
 
     for Point(x, y, z, color) in points.data.iter() {
-        let mesh = meshes.add(Sphere::new(0.05).mesh().uv(32, 18));
+        let mesh = meshes.add(Sphere::new(0.03).mesh().uv(32, 18));
         let material = materials.add(StandardMaterial {
             base_color: *color,
             ..Default::default()
