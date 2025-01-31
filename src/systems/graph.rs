@@ -5,17 +5,12 @@ use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::prelude::*;
 use std::f32::consts::PI;
 
-const AXIS_LENGTH: f32 = 4.0;
+pub const AXIS_LENGTH: f32 = 5.0;
 const AXIS_THICKNESS: f32 = 0.03;
+const TICK_SIZE: f32 = 0.1;
+const LABEL_OFFSET: f32 = 0.2;
 #[derive(Component)]
 struct Axis;
-
-#[derive(Component)]
-enum AxisType {
-    X,
-    Y,
-    Z,
-}
 
 pub fn setup_graph(
     mut commands: Commands,
@@ -43,7 +38,6 @@ pub fn setup_graph(
             MeshMaterial3d(red_material.clone()),
             Transform::default().with_rotation(Quat::from_rotation_z(-PI / 2.)),
             Axis,
-            AxisType::X,
         ))
         .id();
 
@@ -63,7 +57,6 @@ pub fn setup_graph(
             MeshMaterial3d(green_material.clone()),
             Transform::default(),
             Axis,
-            AxisType::Y,
         ))
         .id();
 
@@ -83,7 +76,6 @@ pub fn setup_graph(
             MeshMaterial3d(blue_material.clone()),
             Transform::default().with_rotation(Quat::from_rotation_x(PI / 2.)),
             Axis,
-            AxisType::Z,
         ))
         .id();
 
