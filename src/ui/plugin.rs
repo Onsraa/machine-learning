@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
-use crate::ui::systems::update_ui;
+use crate::ui::models::update_ui;
 
 pub struct UiPlugin;
 

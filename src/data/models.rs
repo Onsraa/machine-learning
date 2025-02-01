@@ -5,7 +5,6 @@ use rand::Rng;
 
 pub struct Point(pub f32, pub f32, pub f32, pub Color); // x, y, z, color
 
-
 #[derive(Component)]
 pub struct DataPoint;
 
@@ -86,10 +85,7 @@ pub fn find_max_coordinates(points: &Vec<Point>) -> (f32, f32, f32) {
     (max_x, max_y, max_z)
 }
 
-pub fn update_max_coordinates(
-    mut points: ResMut<Points>,
-    mut max_coords: ResMut<MaxCoordinates>,
-) {
+pub fn update_max_coordinates(mut points: ResMut<Points>, mut max_coords: ResMut<MaxCoordinates>) {
     let (max_x, max_y, max_z) = find_max_coordinates(&points.data);
     max_coords.x = max_x;
     max_coords.y = max_y;
@@ -123,12 +119,16 @@ pub fn draw_points(
         } else {
             let normalized_x = x / max_coords.x;
             let normalized_y = y / max_coords.y;
-            let normalized_z = if max_coords.z != 0.0 { z / max_coords.z } else { 0.0 };
+            let normalized_z = if max_coords.z != 0.0 {
+                z / max_coords.z
+            } else {
+                0.0
+            };
 
             (
                 normalized_x * scale_factor,
                 normalized_y * scale_factor,
-                normalized_z * scale_factor
+                normalized_z * scale_factor,
             )
         };
 

@@ -1,10 +1,9 @@
-use crate::data::models::{DataModel, ModelState, Points};
+use crate::data::models::{DataModel, ModelState};
 use bevy::prelude::*;
 use bevy_egui::EguiContexts;
 
 pub fn update_ui(
     mut commands: Commands,
-    mut points: ResMut<Points>,
     mut data_model: ResMut<DataModel>,
     mut contexts: EguiContexts,
     current_state: Res<State<ModelState>>,
