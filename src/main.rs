@@ -14,6 +14,6 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugins(SetupPlugin)
-        .add_plugins(EguiPlugin)
+        //.add_plugins(EguiPlugin)
         .run();
 }

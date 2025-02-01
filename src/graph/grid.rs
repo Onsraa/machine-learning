@@ -10,7 +10,7 @@ pub mod grid {
         commands.insert_resource(Grid(parameters.width, parameters.height));
     }
 
-    pub fn draw_grid(
+    pub fn draw_grid<ColorMaterial>(
         mut commands: Commands,
         mut meshes: ResMut<Assets<Mesh>>,
         mut materials: ResMut<Assets<ColorMaterial>>,

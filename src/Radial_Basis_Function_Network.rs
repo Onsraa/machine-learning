@@ -95,7 +95,6 @@ impl RBFNetwork {
         }
     }
 
-
     pub fn predict(&self, input: &DVector<f64>) -> usize {
         let output = self.forward(input);
         output.argmax().0 // Returns the index of the maximum value
