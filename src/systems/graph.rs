@@ -4,11 +4,8 @@ use bevy::math::Quat;
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::prelude::*;
 use std::f32::consts::PI;
+use crate::params::*;
 
-pub const AXIS_LENGTH: f32 = 5.0;
-const AXIS_THICKNESS: f32 = 0.03;
-const TICK_SIZE: f32 = 0.1;
-const LABEL_OFFSET: f32 = 0.2;
 #[derive(Component)]
 struct Axis;
 

@@ -1,7 +1,9 @@
-use crate::systems::graph::AXIS_LENGTH;
+use crate::algorithms::linear_regression::prepare_data;
+use crate::params::*;
 use bevy::color::palettes::css as color;
-use bevy::prelude::*;
-use rand::Rng;
+use bevy::prelude::{Transform, *};
+use nalgebra::*;
+use super::data_model::*;
 
 pub struct Point(pub f32, pub f32, pub f32, pub Color); // x, y, z, color
 
@@ -21,31 +23,114 @@ pub enum ModelState {
 }
 
 #[derive(Resource, Default)]
-pub enum DataModel {
-    #[default]
-    LinearSimple,
-    LinearMultiple,
-    XOR,
-    Cross,
-    MultiLinear3Classes,
-    MultiCross,
-    LinearSimple2d,
-    LinearSimple3d,
-    LinearTricky3d,
-    NonLinearSimple2d,
-    NonLinearSimple3d,
+pub struct DatasetConverter {
+    pub inputs: DMatrix<f64>,
+    pub outputs: DVector<f64>,
+    pub is_classification: bool,
 }
 
-impl DataModel {
-    pub fn is_normalized(&self) -> bool {
-        matches!(
-            self,
-            DataModel::XOR
+impl DatasetConverter {
+    // Convertit les données nalgebra en points Bevy
+    pub fn to_bevy_points(&self) -> Vec<Point> {
+        let mut points = Vec::new();
+
+        // Pour chaque point dans les données
+        for i in 0..self.inputs.nrows() {
+            let x = self.inputs[(i, 0)] as f32;
+            let y = if self.inputs.ncols() > 1 {
+                self.inputs[(i, 1)] as f32
+            } else {
+                self.outputs[i] as f32
+            };
+            let z = if self.inputs.ncols() > 2 {
+                self.inputs[(i, 2)] as f32
+            } else {
+                0.0
+            };
+
+            // Déterminer la couleur
+            let color = if self.is_classification {
+                match self.outputs[i] as i32 {
+                    0 => Color::from(color::BLUE),
+                    1 => Color::from(color::RED),
+                    2 => Color::from(color::GREEN),
+                    _ => Color::from(color::BLACK),
+                }
+            } else {
+                Color::from(color::BLACK)
+            };
+
+            points.push(Point(x, y, z, color));
+        }
+
+        points
+    }
+
+    // Convertit les points Bevy en données nalgebra
+    pub fn from_bevy_points(points: &[Point], is_classification: bool) -> Self {
+        let n_points = points.len();
+        let mut inputs = Vec::new();
+        let mut outputs = Vec::new();
+
+        for Point(x, y, z, color) in points {
+            if *z == 0.0 {
+                // Cas 2D
+                inputs.push(vec![*x as f64]);
+                outputs.push(*y as f64);
+            } else {
+                // Cas 3D
+                inputs.push(vec![*x as f64, *y as f64]);
+                outputs.push(*z as f64);
+            }
+
+            if is_classification {
+                // Convertir les couleurs en classes
+                outputs.push(match color {
+                    c if *c == Color::from(color::BLUE) => 0.0,
+                    c if *c == Color::from(color::RED) => 1.0,
+                    c if *c == Color::from(color::GREEN) => 2.0,
+                    _ => 0.0,
+                });
+            }
+        }
+
+        let n_features = inputs[0].len();
+        let x_matrix = DMatrix::from_fn(n_points, n_features, |i, j| inputs[i][j]);
+        let y_vector = DVector::from_vec(outputs);
+
+        DatasetConverter {
+            inputs: x_matrix,
+            outputs: y_vector,
+            is_classification,
+        }
+    }
+}
+
+// Fonction de mise à jour adaptée
+pub fn update_points(
+    mut points: ResMut<Points>,
+    mut dataset: ResMut<DatasetConverter>,
+    data_model: Res<DataModel>,
+) {
+    let generated_dataset = generate_dataset(&data_model);
+    let (inputs_matrix, outputs_vector) =
+        prepare_data(generated_dataset.inputs, generated_dataset.outputs);
+
+    *dataset = DatasetConverter {
+        inputs: inputs_matrix,
+        outputs: outputs_vector,
+        is_classification: matches!(
+            *data_model,
+            DataModel::LinearSimple
+                | DataModel::LinearMultiple
+                | DataModel::XOR
                 | DataModel::Cross
                 | DataModel::MultiLinear3Classes
                 | DataModel::MultiCross
-        )
-    }
+        ),
+    };
+
+    points.data = dataset.to_bevy_points();
 }
 
 #[derive(Resource, Default)]
@@ -53,22 +138,6 @@ pub struct MaxCoordinates {
     pub x: f32,
     pub y: f32,
     pub z: f32,
-}
-
-pub fn update_points(mut points: ResMut<Points>, data_model: Res<DataModel>) {
-    points.data = match *data_model {
-        DataModel::LinearSimple => create_linear_simple_model(),
-        DataModel::LinearMultiple => create_linear_multiple_model(),
-        DataModel::XOR => create_xor_model(),
-        DataModel::Cross => create_cross_model(),
-        DataModel::MultiLinear3Classes => create_multi_linear_3_classes_model(),
-        DataModel::MultiCross => create_multi_cross_model(),
-        DataModel::LinearSimple2d => create_linear_simple_2d_model(),
-        DataModel::LinearSimple3d => create_linear_simple_3d_model(),
-        DataModel::LinearTricky3d => create_linear_tricky_3d_model(),
-        DataModel::NonLinearSimple2d => create_non_linear_simple_2d_model(),
-        DataModel::NonLinearSimple3d => create_non_linear_simple_3d_model(),
-    };
 }
 
 pub fn find_max_coordinates(points: &Vec<Point>) -> (f32, f32, f32) {
@@ -140,160 +209,4 @@ pub fn draw_points(
         ));
     }
     next_state.set(ModelState::Ready)
-}
-
-fn create_linear_simple_model() -> Vec<Point> {
-    vec![
-        Point(1.0, 1.0, 0.0, Color::from(color::BLUE)),
-        Point(2.0, 3.0, 0.0, Color::from(color::RED)),
-        Point(3.0, 3.0, 0.0, Color::from(color::RED)),
-    ]
-}
-
-fn create_linear_multiple_model() -> Vec<Point> {
-    let mut rng = rand::thread_rng();
-    let mut pts = Vec::with_capacity(100);
-
-    for _ in 0..50 {
-        let x = rng.gen::<f32>() * 0.9 + 1.0;
-        let y = rng.gen::<f32>() * 0.9 + 1.0;
-        pts.push(Point(x, y, 0.0, Color::from(color::BLUE)));
-    }
-
-    for _ in 0..50 {
-        let x = rng.gen::<f32>() * 0.9 + 2.0;
-        let y = rng.gen::<f32>() * 0.9 + 2.0;
-        pts.push(Point(x, y, 0.0, Color::from(color::RED)));
-    }
-
-    pts
-}
-
-fn create_xor_model() -> Vec<Point> {
-    vec![
-        Point(1.0, 0.0, 0.0, Color::from(color::BLUE)),
-        Point(0.0, 1.0, 0.0, Color::from(color::BLUE)),
-        Point(0.0, 0.0, 0.0, Color::from(color::RED)),
-        Point(1.0, 1.0, 0.0, Color::from(color::RED)),
-    ]
-}
-
-fn create_cross_model() -> Vec<Point> {
-    let mut rng = rand::thread_rng();
-    let mut pts = Vec::with_capacity(500);
-
-    for _ in 0..500 {
-        let x: f32 = rng.gen_range(-1.0..1.0);
-        let y: f32 = rng.gen_range(-1.0..1.0);
-        let label = if x.abs() <= 0.3 || y.abs() <= 0.3 {
-            1
-        } else {
-            -1
-        };
-        let color = if label == 1 {
-            Color::from(color::BLUE)
-        } else {
-            Color::from(color::RED)
-        };
-        pts.push(Point(x, y, 0.0, color));
-    }
-    pts
-}
-
-fn create_multi_linear_3_classes_model() -> Vec<Point> {
-    let mut rng = rand::thread_rng();
-    let mut pts = Vec::new();
-
-    for _ in 0..500 {
-        let x = rng.gen_range(-1.0..1.0);
-        let y = rng.gen_range(-1.0..1.0);
-
-        let c1 = -x - y - 0.5 > 0.0 && y < 0.0 && (x - y - 0.5) < 0.0;
-        let c2 = -x - y - 0.5 < 0.0 && y > 0.0 && (x - y - 0.5) < 0.0;
-        let c3 = -x - y - 0.5 < 0.0 && y < 0.0 && (x - y - 0.5) > 0.0;
-
-        let color = if c1 {
-            Some(Color::from(color::BLUE))
-        } else if c2 {
-            Some(Color::from(color::RED))
-        } else if c3 {
-            Some(Color::from(color::GREEN))
-        } else {
-            None
-        };
-
-        if let Some(col) = color {
-            pts.push(Point(x, y, 0.0, col));
-        }
-    }
-
-    pts
-}
-
-fn create_multi_cross_model() -> Vec<Point> {
-    let mut rng = rand::thread_rng();
-    let mut pts = Vec::with_capacity(1000);
-
-    for _ in 0..1000 {
-        let x: f32 = rng.gen_range(-1.0..1.0);
-        let y: f32 = rng.gen_range(-1.0..1.0);
-
-        let cond_blue: f32 = x % 0.5;
-        let cond_red: f32 = y % 0.5;
-
-        let cond_blue_ok = cond_blue.abs() <= 0.25 && cond_red.abs() > 0.25;
-        let cond_red_ok = cond_blue.abs() > 0.25 && cond_red.abs() <= 0.25;
-
-        let color = if cond_blue_ok {
-            Color::from(color::BLUE)
-        } else if cond_red_ok {
-            Color::from(color::RED)
-        } else {
-            Color::from(color::GREEN)
-        };
-
-        pts.push(Point(x, y, 0.0, color));
-    }
-
-    pts
-}
-
-fn create_linear_simple_2d_model() -> Vec<Point> {
-    vec![
-        Point(1.0, 2.0, 0.0, Color::BLACK),
-        Point(2.0, 3.0, 0.0, Color::BLACK),
-    ]
-}
-
-fn create_linear_simple_3d_model() -> Vec<Point> {
-    vec![
-        Point(1.0, 1.0, 2.0, Color::from(color::BLACK)),
-        Point(2.0, 2.0, 3.0, Color::from(color::BLACK)),
-        Point(3.0, 1.0, 2.5, Color::from(color::BLACK)),
-    ]
-}
-
-fn create_linear_tricky_3d_model() -> Vec<Point> {
-    vec![
-        Point(1.0, 1.0, 1.0, Color::from(color::BLACK)),
-        Point(2.0, 2.0, 2.0, Color::from(color::BLACK)),
-        Point(3.0, 3.0, 3.0, Color::from(color::BLACK)),
-    ]
-}
-
-fn create_non_linear_simple_2d_model() -> Vec<Point> {
-    vec![
-        Point(1.0, 2.0, 0.0, Color::BLACK),
-        Point(2.0, 3.0, 0.0, Color::BLACK),
-        Point(3.0, 2.5, 0.0, Color::BLACK),
-    ]
-}
-
-fn create_non_linear_simple_3d_model() -> Vec<Point> {
-    vec![
-        Point(1.0, 0.0, 2.0, Color::from(color::BLACK)),
-        Point(0.0, 1.0, 1.0, Color::from(color::BLACK)),
-        Point(1.0, 1.0, -2.0, Color::from(color::BLACK)),
-        Point(0.0, 0.0, -1.0, Color::from(color::BLACK)),
-    ]
 }

@@ -1,6 +1,5 @@
-use std::{f32::consts::FRAC_PI_2, ops::Range};
-
 use bevy::prelude::*;
+use std::{f32::consts::FRAC_PI_2, ops::Range};
 
 #[derive(Debug, Resource)]
 pub struct CameraSettings {

@@ -1,4 +1,4 @@
-use crate::data::models::{DataModel, ModelState};
+use crate::data::*;
 use bevy::prelude::*;
 use bevy_egui::EguiContexts;
 
