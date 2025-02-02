@@ -4,7 +4,7 @@ use bevy_egui::EguiContexts;
 
 pub fn update_ui(
     mut commands: Commands,
-    mut data_model: ResMut<DataModel>,
+    data_model: Res<DataModel>,
     mut contexts: EguiContexts,
     current_state: Res<State<ModelState>>,
     mut next_state: ResMut<NextState<ModelState>>,

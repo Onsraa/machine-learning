@@ -1,6 +1,6 @@
-use crate::components::camera::CameraSettings;
 use bevy::prelude::*;
 use bevy_input::mouse::AccumulatedMouseMotion;
+use crate::components::*;
 
 pub fn orbit(
     mut camera: Single<&mut Transform, With<Camera>>,

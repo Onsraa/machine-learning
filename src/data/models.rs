@@ -1,9 +1,9 @@
 use crate::algorithms::linear_regression::prepare_data;
+use crate::data::*;
 use crate::params::*;
 use bevy::color::palettes::css as color;
 use bevy::prelude::{Transform, *};
 use nalgebra::*;
-use super::data_model::*;
 
 pub struct Point(pub f32, pub f32, pub f32, pub Color); // x, y, z, color
 
@@ -30,25 +30,41 @@ pub struct DatasetConverter {
 }
 
 impl DatasetConverter {
-    // Convertit les données nalgebra en points Bevy
     pub fn to_bevy_points(&self) -> Vec<Point> {
         let mut points = Vec::new();
 
-        // Pour chaque point dans les données
         for i in 0..self.inputs.nrows() {
-            let x = self.inputs[(i, 0)] as f32;
-            let y = if self.inputs.ncols() > 1 {
-                self.inputs[(i, 1)] as f32
-            } else {
-                self.outputs[i] as f32
-            };
-            let z = if self.inputs.ncols() > 2 {
-                self.inputs[(i, 2)] as f32
-            } else {
-                0.0
+            let (x, y, z) = match self.inputs.ncols() {
+                // Cas 2D (régression)
+                1 => {
+                    let x = self.inputs[(i, 0)] as f32;
+                    let y = self.outputs[i] as f32;
+                    (x, y, 0.0)
+                }
+                // Cas 2D (classification) ou 3D (régression)
+                2 => {
+                    if self.is_classification {
+                        // Classification 2D
+                        let x = self.inputs[(i, 0)] as f32;
+                        let y = self.inputs[(i, 1)] as f32;
+                        (x, y, 0.0)
+                    } else {
+                        // Régression 3D
+                        let x = self.inputs[(i, 0)] as f32;
+                        let y = self.inputs[(i, 1)] as f32;
+                        let z = self.outputs[i] as f32;
+                        (x, y, z)
+                    }
+                }
+                // Cas 3D (régression)
+                _ => {
+                    let x = self.inputs[(i, 0)] as f32;
+                    let y = self.inputs[(i, 1)] as f32;
+                    let z = self.outputs[i] as f32;
+                    (x, y, z)
+                }
             };
 
-            // Déterminer la couleur
             let color = if self.is_classification {
                 match self.outputs[i] as i32 {
                     0 => Color::from(color::BLUE),
@@ -65,38 +81,33 @@ impl DatasetConverter {
 
         points
     }
-
-    // Convertit les points Bevy en données nalgebra
     pub fn from_bevy_points(points: &[Point], is_classification: bool) -> Self {
         let n_points = points.len();
         let mut inputs = Vec::new();
         let mut outputs = Vec::new();
 
-        for Point(x, y, z, color) in points {
-            if *z == 0.0 {
-                // Cas 2D
+        for Point(x, y, z, _) in points {
+            if is_classification {
+                // Cas classification : (x,y) sont les inputs
+                inputs.push(vec![*x as f64, *y as f64]);
+            } else if *z == 0.0 {
+                // Cas régression 2D : x est l'input, y est l'output
                 inputs.push(vec![*x as f64]);
                 outputs.push(*y as f64);
             } else {
-                // Cas 3D
+                // Cas régression 3D : (x,y) sont les inputs, z est l'output
                 inputs.push(vec![*x as f64, *y as f64]);
                 outputs.push(*z as f64);
-            }
-
-            if is_classification {
-                // Convertir les couleurs en classes
-                outputs.push(match color {
-                    c if *c == Color::from(color::BLUE) => 0.0,
-                    c if *c == Color::from(color::RED) => 1.0,
-                    c if *c == Color::from(color::GREEN) => 2.0,
-                    _ => 0.0,
-                });
             }
         }
 
         let n_features = inputs[0].len();
         let x_matrix = DMatrix::from_fn(n_points, n_features, |i, j| inputs[i][j]);
-        let y_vector = DVector::from_vec(outputs);
+        let y_vector = if is_classification {
+            DVector::from_vec(vec![0.0; n_points]) // Les outputs seront définis plus tard
+        } else {
+            DVector::from_vec(outputs)
+        };
 
         DatasetConverter {
             inputs: x_matrix,
@@ -154,7 +165,7 @@ pub fn find_max_coordinates(points: &Vec<Point>) -> (f32, f32, f32) {
     (max_x, max_y, max_z)
 }
 
-pub fn update_max_coordinates(mut points: ResMut<Points>, mut max_coords: ResMut<MaxCoordinates>) {
+pub fn update_max_coordinates(points: Res<Points>, mut max_coords: ResMut<MaxCoordinates>) {
     let (max_x, max_y, max_z) = find_max_coordinates(&points.data);
     max_coords.x = max_x;
     max_coords.y = max_y;
@@ -163,12 +174,12 @@ pub fn update_max_coordinates(mut points: ResMut<Points>, mut max_coords: ResMut
 
 pub fn draw_points(
     mut commands: Commands,
-    mut points: ResMut<Points>,
-    mut max_coords: ResMut<MaxCoordinates>,
+    points: Res<Points>,
+    max_coords: Res<MaxCoordinates>,
     data_model: Res<DataModel>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut data_points: Query<Entity, With<DataPoint>>,
+    data_points: Query<Entity, With<DataPoint>>,
     mut next_state: ResMut<NextState<ModelState>>,
 ) {
     for point in data_points.iter() {

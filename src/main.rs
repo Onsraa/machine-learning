@@ -1,10 +1,10 @@
+mod algorithms;
 mod components;
 mod data;
+mod params;
 mod plugins;
 mod systems;
 mod ui;
-mod algorithms;
-mod params;
 
 use crate::plugins::models::ModelsPlugin;
 use crate::plugins::setup::SetupPlugin;

@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use crate::algorithms::*;
 use crate::data::*;
 
 pub struct ModelsPlugin;

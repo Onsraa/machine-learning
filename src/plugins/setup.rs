@@ -1,5 +1,5 @@
-use crate::components::camera::CameraSettings;
-use crate::systems::camera::orbit;
+use crate::components::camera::*;
+use crate::systems::camera::*;
 use crate::systems::graph::setup_graph;
 use bevy::prelude::*;
 

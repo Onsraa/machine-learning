@@ -3,8 +3,8 @@ use bevy::color::palettes::basic::{BLUE, GREEN, RED};
 use bevy::math::Quat;
 use bevy::pbr::{MeshMaterial3d, StandardMaterial};
 use bevy::prelude::*;
-use std::f32::consts::PI;
 use crate::params::*;
+use std::f32::consts::PI;
 
 #[derive(Component)]
 struct Axis;

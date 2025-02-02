@@ -4,7 +4,7 @@ use rand::Rng;
 /// Structure représentant le modèle de classification linéaire multi-classes
 pub struct LinearClassifier {
     pub n_classes: usize,
-    pub classifiers: Vec<DVector<f64>>, // Un classifieur par classe
+    pub classifiers: Vec<DVector<f64>>,
     pub biases: Vec<f64>,
 }
 
