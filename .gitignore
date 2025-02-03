@@ -1,0 +1,17 @@
+﻿# Rust build artifacts
+target
+crates/**/target
+benches/**/target
+tools/**/target
+**/*.rs.bk
+
+# DX12 wgpu backend
+dxcompiler.dll
+dxil.dll
+
+# Cargo
+Cargo.lock
+.cargo/config
+.cargo/config.toml
+
+.idea
