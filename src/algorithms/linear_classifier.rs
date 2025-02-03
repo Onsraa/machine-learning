@@ -64,7 +64,10 @@ impl LinearClassifier {
         one_hot
     }
 
-    /// Entraîne le modèle avec softmax et cross-entropy
+    fn tanh(x: f64) -> f64 {
+        x.tanh()
+    }
+
     pub fn fit(&mut self, x: &DMatrix<f64>, y: &[usize], learning_rate: f64, n_epochs: usize) -> Vec<f64> {
         let mut losses = Vec::with_capacity(n_epochs);
         let n_samples = x.nrows() as f64;
@@ -72,38 +75,40 @@ impl LinearClassifier {
         for _ in 0..n_epochs {
             let mut total_loss = 0.0;
 
-            // Pour chaque exemple
             for i in 0..x.nrows() {
                 let x_i = x.row(i);
                 let x_vec = x_i.transpose();
 
-                // Calcul des scores et softmax
-                let scores = self.compute_scores(&x_vec);
-                let max_score = scores.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-                let exp_scores: Vec<f64> = scores.iter()
-                    .map(|&s| (s - max_score).exp())
-                    .collect();
-                let sum_exp = exp_scores.iter().sum::<f64>();
-                let softmax_probs: Vec<f64> = exp_scores.iter()
-                    .map(|&s| s / sum_exp)
-                    .collect();
-
-                // Cross-entropy loss
-                let true_class = y[i];
-                total_loss -= (softmax_probs[true_class] + 1e-10).ln();
-
-                // Gradients et mise à jour
+                // Calcul des sorties avec tanh
+                let mut outputs = Vec::with_capacity(self.n_classes);
                 for j in 0..self.n_classes {
-                    let target = if j == true_class { 1.0 } else { 0.0 };
-                    let error = softmax_probs[j] - target; // Utilise les probabilités softmax
+                    let activation = self.classifiers[j].dot(&x_vec) + self.biases[j];
+                    outputs.push(Self::tanh(activation));
+                }
 
-                    // Plus de division par n_samples ici
-                    self.classifiers[j] -= learning_rate * error * &x_vec;
-                    self.biases[j] -= learning_rate * error;
+                let true_class = y[i];
+
+                // Calcul de la perte (MSE au lieu de cross-entropy)
+                let mut class_loss = 0.0;
+                for (j, output) in outputs.iter().enumerate() {
+                    let target = if j == true_class { 1.0 } else { -1.0 };
+                    let error = output - target;
+                    class_loss += error * error;
+                }
+                total_loss += class_loss;
+
+                // Mise à jour avec la dérivée de tanh
+                for j in 0..self.n_classes {
+                    let target = if j == true_class { 1.0 } else { -1.0 };
+                    let output = outputs[j];
+                    // dérivée de tanh = 1 - tanh²(x)
+                    let grad = (output - target) * (1.0 - output * output);
+
+                    self.classifiers[j] -= learning_rate * grad * &x_vec;
+                    self.biases[j] -= learning_rate * grad;
                 }
             }
 
-            // La loss moyenne sur tout le batch
             losses.push(total_loss / n_samples);
         }
 
