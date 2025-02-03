@@ -5,6 +5,7 @@ mod params;
 mod plugins;
 mod systems;
 mod ui;
+mod resources;
 
 use crate::plugins::models::ModelsPlugin;
 use crate::plugins::setup::SetupPlugin;
