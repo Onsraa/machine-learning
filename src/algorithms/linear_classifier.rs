@@ -65,13 +65,7 @@ impl LinearClassifier {
     }
 
     /// Entraîne le modèle avec softmax et cross-entropy
-    pub fn fit(
-        &mut self,
-        x: &DMatrix<f64>,
-        y: &[usize],
-        learning_rate: f64,
-        n_epochs: usize,
-    ) -> Vec<f64> {
+    pub fn fit(&mut self, x: &DMatrix<f64>, y: &[usize], learning_rate: f64, n_epochs: usize) -> Vec<f64> {
         let mut losses = Vec::with_capacity(n_epochs);
         let n_samples = x.nrows() as f64;
 
@@ -84,30 +78,32 @@ impl LinearClassifier {
                 let x_vec = x_i.transpose();
 
                 // Calcul des scores et softmax
-                let mut scores = self.compute_scores(&x_vec);
+                let scores = self.compute_scores(&x_vec);
                 let max_score = scores.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-                for score in &mut scores {
-                    *score = (*score - max_score).exp();
-                }
-                let sum_exp = scores.iter().sum::<f64>();
-                for score in &mut scores {
-                    *score /= sum_exp;
-                }
+                let exp_scores: Vec<f64> = scores.iter()
+                    .map(|&s| (s - max_score).exp())
+                    .collect();
+                let sum_exp = exp_scores.iter().sum::<f64>();
+                let softmax_probs: Vec<f64> = exp_scores.iter()
+                    .map(|&s| s / sum_exp)
+                    .collect();
 
                 // Cross-entropy loss
                 let true_class = y[i];
-                total_loss -= (scores[true_class] + 1e-10).ln();
+                total_loss -= (softmax_probs[true_class] + 1e-10).ln();
 
                 // Gradients et mise à jour
                 for j in 0..self.n_classes {
                     let target = if j == true_class { 1.0 } else { 0.0 };
-                    let error = scores[j] - target;
+                    let error = softmax_probs[j] - target; // Utilise les probabilités softmax
 
-                    self.classifiers[j] -= &(learning_rate * error * &x_vec / n_samples);
-                    self.biases[j] -= learning_rate * error / n_samples;
+                    // Plus de division par n_samples ici
+                    self.classifiers[j] -= learning_rate * error * &x_vec;
+                    self.biases[j] -= learning_rate * error;
                 }
             }
 
+            // La loss moyenne sur tout le batch
             losses.push(total_loss / n_samples);
         }
 

@@ -3,33 +3,29 @@ use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
 use egui_plot::*;
 
-pub fn training_ui_system(
-    mut contexts: EguiContexts,
-    mut training_state: ResMut<TrainingState>,
-) {
+pub fn training_ui_system(mut contexts: EguiContexts, mut training_state: ResMut<TrainingState>) {
     egui::Window::new("Training Control").show(contexts.ctx_mut(), |ui| {
         ui.add_space(5.0);
 
-        if training_state.is_training {
-            if ui.button("Stop Training").clicked() {
-                println!("Stopping training...");
+        ui.horizontal(|ui| {
+            if training_state.is_training {
+                if ui.button("Stop Training").clicked() {
+                    println!("Stopping training...");
+                    training_state.is_training = false;
+                }
+            } else {
+                if ui.button("Start Training").clicked() {
+                    println!("Starting training...");
+                    training_state.is_training = true;
+                }
+            }
+            ui.add_space(5.0);
+            if ui.button("Reset Training").clicked() {
+                println!("Resetting training...");
+                training_state.should_reset = true;
                 training_state.is_training = false;
             }
-        } else {
-            if ui.button("Start Training").clicked() {
-                println!("Starting training...");
-                training_state.is_training = true;
-            }
-        }
-        ui.add_space(5.0);
-        ui.separator();
-        ui.add_space(5.0);
-
-        if ui.button("Reset Training").clicked() {
-            println!("Resetting training...");
-            training_state.should_reset = true;
-            training_state.is_training = false;
-        }
+        });
 
         ui.add_space(5.0);
         ui.separator();
@@ -39,13 +35,16 @@ pub fn training_ui_system(
 
         // Learning Rate Combo Box
         egui::ComboBox::from_label("Learning Rate")
-            .selected_text(format!("{:.5}", training_state.hyperparameters.learning_rate))
+            .selected_text(format!(
+                "{:.5}",
+                training_state.hyperparameters.learning_rate
+            ))
             .show_ui(ui, |ui| {
                 for &rate in Hyperparameters::LEARNING_RATES.iter() {
                     ui.selectable_value(
                         &mut training_state.hyperparameters.learning_rate,
                         rate,
-                        format!("{:.5}", rate)
+                        format!("{:.5}", rate),
                     );
                 }
             });
@@ -53,13 +52,16 @@ pub fn training_ui_system(
 
         // Train Ratio Combo Box
         egui::ComboBox::from_label("Train Ratio")
-            .selected_text(format!("{}%", (training_state.hyperparameters.train_ratio * 100.0) as i32))
+            .selected_text(format!(
+                "{}%",
+                (training_state.hyperparameters.train_ratio * 100.0) as i32
+            ))
             .show_ui(ui, |ui| {
-                for &ratio in Hyperparameters:: TRAIN_RATIOS.iter() {
+                for &ratio in Hyperparameters::TRAIN_RATIOS.iter() {
                     ui.selectable_value(
                         &mut training_state.hyperparameters.train_ratio,
                         ratio,
-                        format!("{}%", (ratio * 100.0) as i32)
+                        format!("{}%", (ratio * 100.0) as i32),
                     );
                 }
             });
@@ -72,7 +74,7 @@ pub fn training_ui_system(
                     ui.selectable_value(
                         &mut training_state.hyperparameters.batch_size,
                         size,
-                        format!("{}", size)
+                        format!("{}", size),
                     );
                 }
             });
@@ -80,9 +82,12 @@ pub fn training_ui_system(
         ui.add_space(5.0);
         // Epoch Interval Slider
         ui.add(
-            egui::Slider::new(&mut training_state.hyperparameters.epoch_interval, 0.01..=1.0)
-                .text("Epoch Interval (s)")
-                .logarithmic(true)
+            egui::Slider::new(
+                &mut training_state.hyperparameters.epoch_interval,
+                0.01..=1.0,
+            )
+            .text("Epoch Interval (s)")
+            .logarithmic(true),
         );
 
         ui.add_space(5.0);
@@ -103,14 +108,18 @@ pub fn training_ui_system(
 }
 
 fn plot_losses_with_legend(ui: &mut egui::Ui, metrics: &TrainingMetrics) {
-    use egui_plot::{Plot, Line, PlotPoints, Legend};
+    use egui_plot::{Legend, Line, Plot, PlotPoints};
 
-    let train_points: PlotPoints = metrics.training_losses.iter()
+    let train_points: PlotPoints = metrics
+        .training_losses
+        .iter()
         .enumerate()
         .map(|(i, &loss)| [i as f64, loss])
         .collect();
 
-    let test_points: PlotPoints = metrics.test_losses.iter()
+    let test_points: PlotPoints = metrics
+        .test_losses
+        .iter()
         .enumerate()
         .map(|(i, &loss)| [i as f64, loss])
         .collect();
@@ -119,11 +128,15 @@ fn plot_losses_with_legend(ui: &mut egui::Ui, metrics: &TrainingMetrics) {
         .legend(Legend::default())
         .height(200.0)
         .show(ui, |plot_ui| {
-            plot_ui.line(Line::new(train_points)
-                .name("Training Loss")
-                .color(egui::Color32::BLUE));
-            plot_ui.line(Line::new(test_points)
-                .name("Test Loss")
-                .color(egui::Color32::RED));
+            plot_ui.line(
+                Line::new(train_points)
+                    .name("Training Loss")
+                    .color(egui::Color32::BLUE),
+            );
+            plot_ui.line(
+                Line::new(test_points)
+                    .name("Test Loss")
+                    .color(egui::Color32::RED),
+            );
         });
 }
