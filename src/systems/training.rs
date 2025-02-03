@@ -11,6 +11,7 @@ pub fn training_system(
     mut training_state: ResMut<TrainingState>,
     dataset: Res<DatasetConverter>,
     data_model: Res<DataModel>,
+    time: Res<Time>,
 ) {
     // Gérer le reset si nécessaire
     if training_state.should_reset {
@@ -32,7 +33,13 @@ pub fn training_system(
         return;
     }
 
-    println!("Training system running..."); // Debug
+    let current_time = time.elapsed_secs();
+    if current_time - training_state.last_update < training_state.hyperparameters.epoch_interval {
+        return;
+    }
+    training_state.last_update = current_time;
+
+    println!("Training system running... Time: {:.2}s", current_time);
 
     // Vérifier si des données sont disponibles
     if dataset.inputs.nrows() == 0 {

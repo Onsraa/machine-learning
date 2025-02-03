@@ -1,16 +1,25 @@
-use bevy::prelude::*;
-use std::collections::VecDeque;
 use crate::algorithms::linear_classifier::LinearClassifier;
 use crate::algorithms::linear_regression::LinearRegression;
+use bevy::prelude::*;
+use std::collections::VecDeque;
 
 #[derive(Resource)]
 pub struct TrainingState {
     pub is_training: bool,
-    pub should_reset: bool,  // Nouveau flag pour le reset
+    pub should_reset: bool,
     pub hyperparameters: Hyperparameters,
     pub metrics: TrainingMetrics,
     pub regression_model: Option<LinearRegression>,
     pub classification_model: Option<LinearClassifier>,
+    pub last_update: f32,
+}
+
+#[derive(Default)]
+pub struct Hyperparameters {
+    pub learning_rate: f64,
+    pub train_ratio: f64,
+    pub batch_size: usize,
+    pub epoch_interval: f32,
 }
 
 impl Default for TrainingState {
@@ -18,19 +27,36 @@ impl Default for TrainingState {
         Self {
             is_training: false,
             should_reset: false,
-            hyperparameters: Hyperparameters::default(),
+            hyperparameters: Hyperparameters {
+                learning_rate: 0.03,
+                train_ratio: 0.9,
+                batch_size: 32,
+                epoch_interval: 0.1, // Par défaut, 100ms entre les époques
+            },
             metrics: TrainingMetrics::new(1000),
             regression_model: None,
             classification_model: None,
+            last_update: 0.0,
         }
     }
 }
 
-#[derive(Default)]
-pub struct Hyperparameters {
-    pub learning_rate: f64,
-    pub batch_size: usize,
-    pub train_ratio: f64,
+impl Hyperparameters {
+    pub const LEARNING_RATES: [f64; 11] = [
+        0.00001, 0.0001, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0,
+    ];
+
+    pub const TRAIN_RATIOS: [f64; 9] = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9];
+    pub const BATCH_SIZES: [usize; 8] = [1, 4, 8, 16, 32, 64, 128, 256];
+
+    pub fn reset_to_defaults(&mut self) {
+        *self = Self {
+            learning_rate: 0.03,
+            train_ratio: 0.9,
+            batch_size: 32,
+            epoch_interval: 0.1,
+        };
+    }
 }
 
 #[derive(Default)]
