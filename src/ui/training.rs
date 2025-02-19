@@ -33,62 +33,36 @@ pub fn training_ui_system(mut contexts: EguiContexts, mut training_state: ResMut
 
         ui.heading("Hyperparameters");
 
-        // Learning Rate Combo Box
-        egui::ComboBox::from_label("Learning Rate")
-            .selected_text(format!(
-                "{:.5}",
-                training_state.hyperparameters.learning_rate
-            ))
-            .show_ui(ui, |ui| {
-                for &rate in Hyperparameters::LEARNING_RATES.iter() {
-                    ui.selectable_value(
-                        &mut training_state.hyperparameters.learning_rate,
-                        rate,
-                        format!("{:.5}", rate),
-                    );
-                }
-            });
+        // Learning Rate slider
+        ui.horizontal(|ui| {
+            ui.label("Learning Rate:");
+            ui.add(egui::Slider::new(&mut training_state.hyperparameters.learning_rate, 0.00001..=10.0)
+                .text("learning rate"));
+        });
         ui.add_space(5.0);
 
-        // Train Ratio Combo Box
-        egui::ComboBox::from_label("Train Ratio")
-            .selected_text(format!(
-                "{}%",
-                (training_state.hyperparameters.train_ratio * 100.0) as i32
-            ))
-            .show_ui(ui, |ui| {
-                for &ratio in Hyperparameters::TRAIN_RATIOS.iter() {
-                    ui.selectable_value(
-                        &mut training_state.hyperparameters.train_ratio,
-                        ratio,
-                        format!("{}%", (ratio * 100.0) as i32),
-                    );
-                }
-            });
+        // Train Ratio slider
+        ui.horizontal(|ui| {
+            ui.label("Train Ratio:");
+            ui.add(egui::Slider::new(&mut training_state.hyperparameters.train_ratio, 0.1..=0.9)
+                .text("train ratio"));
+        });
         ui.add_space(5.0);
 
-        egui::ComboBox::from_label("Batch Size")
-            .selected_text(format!("{}", training_state.hyperparameters.batch_size))
-            .show_ui(ui, |ui| {
-                for &size in Hyperparameters::BATCH_SIZES.iter() {
-                    ui.selectable_value(
-                        &mut training_state.hyperparameters.batch_size,
-                        size,
-                        format!("{}", size),
-                    );
-                }
-            });
-
+        // Batch Size input
+        ui.horizontal(|ui| {
+            ui.label("Batch Size:");
+            ui.add(egui::DragValue::new(&mut training_state.hyperparameters.batch_size)
+                .clamp_range(1..=1024));
+        });
         ui.add_space(5.0);
-        // Epoch Interval Slider
-        ui.add(
-            egui::Slider::new(
-                &mut training_state.hyperparameters.epoch_interval,
-                0.01..=1.0,
-            )
-            .text("Epoch Interval (s)")
-            .logarithmic(true),
-        );
+
+        // Epoch Interval slider
+        ui.horizontal(|ui| {
+            ui.label("Epoch Interval (s):");
+            ui.add(egui::Slider::new(&mut training_state.hyperparameters.epoch_interval, 0.01..=1.0)
+                .logarithmic(true));
+        });
 
         ui.add_space(5.0);
         ui.separator();
@@ -102,7 +76,6 @@ pub fn training_ui_system(mut contexts: EguiContexts, mut training_state: ResMut
             ui.label(format!("Test Loss: {:.6}", last_test));
         }
 
-        // Plot avec légende
         plot_losses_with_legend(ui, &training_state.metrics);
     });
 }
@@ -128,15 +101,11 @@ fn plot_losses_with_legend(ui: &mut egui::Ui, metrics: &TrainingMetrics) {
         .legend(Legend::default())
         .height(200.0)
         .show(ui, |plot_ui| {
-            plot_ui.line(
-                Line::new(train_points)
-                    .name("Training Loss")
-                    .color(egui::Color32::BLUE),
-            );
-            plot_ui.line(
-                Line::new(test_points)
-                    .name("Test Loss")
-                    .color(egui::Color32::RED),
-            );
+            plot_ui.line(Line::new(train_points)
+                .name("Training Loss")
+                .color(egui::Color32::BLUE));
+            plot_ui.line(Line::new(test_points)
+                .name("Test Loss")
+                .color(egui::Color32::RED));
         });
 }

@@ -1,7 +1,4 @@
 use crate::data::*;
-use crate::resources::training::TrainingState;
-use crate::systems::training::training_system;
-use crate::ui::training::training_ui_system;
 use bevy::prelude::*;
 
 pub struct ModelsPlugin;

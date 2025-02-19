@@ -1,5 +1,4 @@
-use crate::algorithms::linear_classifier::LinearClassifier;
-use crate::algorithms::linear_regression::LinearRegression;
+use crate::algorithms::model_selector::ModelAlgorithm;
 use bevy::prelude::*;
 use std::collections::VecDeque;
 
@@ -9,8 +8,7 @@ pub struct TrainingState {
     pub should_reset: bool,
     pub hyperparameters: Hyperparameters,
     pub metrics: TrainingMetrics,
-    pub regression_model: Option<LinearRegression>,
-    pub classification_model: Option<LinearClassifier>,
+    pub selected_model: Option<ModelAlgorithm>,
     pub last_update: f32,
 }
 
@@ -31,31 +29,12 @@ impl Default for TrainingState {
                 learning_rate: 0.03,
                 train_ratio: 0.9,
                 batch_size: 32,
-                epoch_interval: 0.1, // Par défaut, 100ms entre les époques
+                epoch_interval: 0.1,
             },
             metrics: TrainingMetrics::new(1000),
-            regression_model: None,
-            classification_model: None,
+            selected_model: None,
             last_update: 0.0,
         }
-    }
-}
-
-impl Hyperparameters {
-    pub const LEARNING_RATES: [f64; 11] = [
-        0.00001, 0.0001, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0,
-    ];
-
-    pub const TRAIN_RATIOS: [f64; 9] = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9];
-    pub const BATCH_SIZES: [usize; 8] = [1, 4, 8, 16, 32, 64, 128, 256];
-
-    pub fn reset_to_defaults(&mut self) {
-        *self = Self {
-            learning_rate: 0.03,
-            train_ratio: 0.9,
-            batch_size: 32,
-            epoch_interval: 0.1,
-        };
     }
 }
 
