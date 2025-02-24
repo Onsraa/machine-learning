@@ -1,30 +1,29 @@
-// src/algorithms/mlp.rs
-
+use crate::data::universal_dataset::TaskType;
 use nalgebra::{DMatrix, DVector};
 use rand::Rng;
 
-/// Enumération pour les fonctions d'activation.
 #[derive(Clone, Copy)]
 pub enum Activation {
     Tanh,
-    // D'autres fonctions pourront être ajoutées ultérieurement.
+    Linear,
 }
 
 impl Activation {
     pub fn apply(&self, x: f64) -> f64 {
         match self {
             Activation::Tanh => x.tanh(),
+            Activation::Linear => x,
         }
     }
 
     pub fn derivative(&self, x: f64) -> f64 {
         match self {
             Activation::Tanh => 1.0 - x.tanh().powi(2),
+            Activation::Linear => 1.0,
         }
     }
 }
 
-/// Structure représentant une couche du MLP.
 pub struct Layer {
     pub weights: DMatrix<f64>,
     pub biases: DVector<f64>,
@@ -36,7 +35,11 @@ impl Layer {
         let mut rng = rand::thread_rng();
         let weights = DMatrix::from_fn(n_out, n_in, |_, _| rng.gen::<f64>() * 0.1);
         let biases = DVector::from_fn(n_out, |_, _| rng.gen::<f64>() * 0.1);
-        Self { weights, biases, activation }
+        Self {
+            weights,
+            biases,
+            activation,
+        }
     }
 
     pub fn forward(&self, input: &DVector<f64>) -> (DVector<f64>, DVector<f64>) {
@@ -46,29 +49,37 @@ impl Layer {
     }
 }
 
-/// Structure représentant l'ensemble du MLP.
 pub struct MLP {
     pub layers: Vec<Layer>,
-    pub is_classification: bool,
 }
 
 impl MLP {
+    /// Crée un nouveau MLP.
+    /// L’appelant doit préparer le vecteur d’activations en fonction du problème.
+    /// Pour la régression, on s’assure que la dernière activation est Linear.
     pub fn new(
         input_dim: usize,
         hidden_layers: Vec<usize>,
         output_dim: usize,
-        activations: Vec<Activation>,
-        is_classification: bool,
+        mut activations: Vec<Activation>,
     ) -> Self {
-        assert_eq!(hidden_layers.len() + 1, activations.len(), "Mismatch between layers and activations");
+        assert_eq!(
+            hidden_layers.len() + 1,
+            activations.len(),
+            "Mismatch between layers and activations"
+        );
         let mut layers = Vec::new();
         let mut prev_dim = input_dim;
         for (i, &neurons) in hidden_layers.iter().enumerate() {
             layers.push(Layer::new(prev_dim, neurons, activations[i]));
             prev_dim = neurons;
         }
-        layers.push(Layer::new(prev_dim, output_dim, *activations.last().unwrap()));
-        Self { layers, is_classification }
+        layers.push(Layer::new(
+            prev_dim,
+            output_dim,
+            *activations.last().unwrap(),
+        ));
+        Self { layers }
     }
 
     pub fn forward(&self, input: &DVector<f64>) -> Vec<(DVector<f64>, DVector<f64>)> {
@@ -87,13 +98,18 @@ impl MLP {
     }
 
     /// Entraîne le MLP sur un seul exemple.
-    /// Pour la classification, la cible (une valeur scalaire dans un DVector de taille 1)
-    /// est convertie en vecteur one‑hot (1 pour la classe correcte, -1 pour les autres).
-    pub fn train_example(&mut self, input: &DVector<f64>, target: &DVector<f64>, learning_rate: f64) -> f64 {
+    /// Le paramètre `task` permet d’adapter la conversion de la cible.
+    pub fn train_example(
+        &mut self,
+        input: &DVector<f64>,
+        target: &DVector<f64>,
+        learning_rate: f64,
+        task: TaskType,
+    ) -> f64 {
         let forward_cache = self.forward(input);
         let output = forward_cache.last().unwrap().1.clone();
 
-        let target_adjusted = if self.is_classification {
+        let target_adjusted = if task == TaskType::Classification {
             let class = target[0] as usize;
             let mut v = DVector::from_element(output.len(), -1.0);
             if class < output.len() {
@@ -110,17 +126,15 @@ impl MLP {
         let mut delta: Option<DVector<f64>> = None;
         for i in (0..self.layers.len()).rev() {
             let (z, a) = &forward_cache[i];
-            let a_prev = if i == 0 { input } else { &forward_cache[i - 1].1 };
+            let a_prev = if i == 0 {
+                input
+            } else {
+                &forward_cache[i - 1].1
+            };
 
             let delta_current = if let Some(delta_next) = &delta {
-                // Pour les couches cachées, cloner les poids de la couche suivante.
-                let next_weights = if i < self.layers.len() - 1 {
-                    self.layers[i + 1].weights.clone()
-                } else {
-                    DMatrix::zeros(0, 0)
-                };
+                let next_weights = self.layers[i + 1].weights.clone();
                 let delta_temp = next_weights.transpose() * delta_next;
-                // Copie de l'activation pour éviter de réemprunter self.layers[i] mutuellement.
                 let act = self.layers[i].activation;
                 DVector::from_fn(a.len(), |j, _| {
                     let grad = act.derivative(z[j]);
@@ -142,33 +156,40 @@ impl MLP {
             }
             delta = Some(delta_current);
         }
-
         loss
     }
 
-    pub fn fit(&mut self, inputs: &DMatrix<f64>, targets: &DMatrix<f64>, learning_rate: f64, n_epochs: usize) -> Vec<f64> {
+    pub fn fit(
+        &mut self,
+        inputs: &DMatrix<f64>,
+        targets: &DMatrix<f64>,
+        learning_rate: f64,
+        n_epochs: usize,
+        task: TaskType,
+    ) -> Vec<f64> {
         let n_samples = inputs.nrows();
         let mut losses = Vec::with_capacity(n_epochs);
         for _ in 0..n_epochs {
             let mut total_loss = 0.0;
             for i in 0..n_samples {
                 let x_i = DVector::from_iterator(inputs.ncols(), inputs.row(i).iter().cloned());
-                let target_i = DVector::from_iterator(targets.ncols(), targets.row(i).iter().cloned());
-                total_loss += self.train_example(&x_i, &target_i, learning_rate);
+                let target_i =
+                    DVector::from_iterator(targets.ncols(), targets.row(i).iter().cloned());
+                total_loss += self.train_example(&x_i, &target_i, learning_rate, task);
             }
             losses.push(total_loss / n_samples as f64);
         }
         losses
     }
 
-    pub fn evaluate(&self, inputs: &DMatrix<f64>, targets: &DMatrix<f64>) -> f64 {
+    pub fn evaluate(&self, inputs: &DMatrix<f64>, targets: &DMatrix<f64>, task: TaskType) -> f64 {
         let n_samples = inputs.nrows();
         let mut total_loss = 0.0;
         for i in 0..n_samples {
             let x_i = DVector::from_iterator(inputs.ncols(), inputs.row(i).iter().cloned());
             let target_i = DVector::from_iterator(targets.ncols(), targets.row(i).iter().cloned());
             let output = self.predict(&x_i);
-            let target_adjusted = if self.is_classification {
+            let target_adjusted = if task == TaskType::Classification {
                 let class = target_i[0] as usize;
                 let mut v = DVector::from_element(output.len(), -1.0);
                 if class < output.len() {
@@ -182,5 +203,39 @@ impl MLP {
             total_loss += error.dot(&error) / 2.0;
         }
         total_loss / n_samples as f64
+    }
+}
+
+use crate::algorithms::learning_model::LearningModel;
+
+impl LearningModel for MLP {
+    fn fit(
+        &mut self,
+        x: &DMatrix<f64>,
+        y: &DMatrix<f64>,
+        learning_rate: f64,
+        n_epochs: usize,
+    ) -> Vec<f64> {
+        // Pour une utilisation par défaut, on suppose ici Classification.
+        // L'appelant pourra adapter en appelant directement MLP::fit(..., task) si nécessaire.
+        self.fit(
+            x,
+            y,
+            learning_rate,
+            n_epochs,
+            crate::data::universal_dataset::TaskType::Classification,
+        )
+    }
+
+    fn evaluate(&self, x: &DMatrix<f64>, y: &DMatrix<f64>) -> f64 {
+        self.evaluate(
+            x,
+            y,
+            crate::data::universal_dataset::TaskType::Classification,
+        )
+    }
+
+    fn predict(&self, x: &DVector<f64>) -> DVector<f64> {
+        self.predict(x)
     }
 }

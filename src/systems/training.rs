@@ -1,14 +1,11 @@
-// src/systems/training.rs
-
+use crate::algorithms::linear_regression::LinearRegression;
+use crate::algorithms::mlp::{Activation, MLP};
+use crate::algorithms::model_selector::ModelAlgorithm;
+use crate::data::{DataModel, DatasetConverter};
+use crate::resources::training::TrainingState;
 use bevy::prelude::*;
 use nalgebra::{DMatrix, DVector};
 use rand::seq::SliceRandom;
-use crate::algorithms::model_selector::ModelAlgorithm;
-use crate::algorithms::mlp::{MLP, Activation};
-use crate::algorithms::linear_regression::LinearRegression;
-use crate::algorithms::linear_classifier::LinearClassifier;
-use crate::data::{DataModel, DatasetConverter};
-use crate::resources::training::TrainingState;
 
 pub fn training_system(
     mut training_state: ResMut<TrainingState>,
@@ -54,7 +51,6 @@ pub fn training_system(
                 vec![5],
                 data_model.n_classes().unwrap(),
                 vec![Activation::Tanh, Activation::Tanh],
-                true,
             )));
         } else {
             println!("Initializing LinearRegression for regression...");
@@ -89,9 +85,7 @@ pub fn training_system(
         training_state.metrics.add_metrics(train_loss, test_loss);
         println!(
             "Epoch {}: Train Loss = {:.6}, Test Loss = {:.6}",
-            training_state.metrics.current_epoch,
-            train_loss,
-            test_loss
+            training_state.metrics.current_epoch, train_loss, test_loss
         );
     }
 }
