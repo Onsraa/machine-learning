@@ -1,9 +1,16 @@
-use crate::algorithms::linear_regression::prepare_data;
 use crate::data::*;
 use crate::params::*;
 use bevy::color::palettes::css as color;
 use bevy::prelude::{Transform, *};
 use nalgebra::*;
+
+pub fn prepare_data(inputs: Vec<Vec<f64>>, outputs: Vec<f64>) -> (DMatrix<f64>, DVector<f64>) {
+    let n_samples = inputs.len();
+    let n_features = inputs[0].len();
+    let x_matrix = DMatrix::from_fn(n_samples, n_features, |i, j| inputs[i][j]);
+    let y_vector = DVector::from_vec(outputs);
+    (x_matrix, y_vector)
+}
 
 pub struct Point(pub f32, pub f32, pub f32, pub Color); // x, y, z, color
 
@@ -81,6 +88,7 @@ impl DatasetConverter {
 
         points
     }
+
     pub fn from_bevy_points(points: &[Point], is_classification: bool) -> Self {
         let n_points = points.len();
         let mut inputs = Vec::new();
