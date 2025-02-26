@@ -68,7 +68,7 @@ pub struct Dataset {
     pub inputs: Vec<Vec<f64>>,
     pub outputs: Vec<f64>,
     pub dataset_type: DatasetType,
-    pub n_classes: Option<usize>, // Pour la classification uniquement
+    pub n_classes: Option<usize>,
 }
 
 impl Dataset {

@@ -19,7 +19,6 @@ pub struct Hyperparameters {
     pub batch_size: usize,
     pub epoch_interval: f32,
     pub early_stopping_patience: usize,
-    pub regularization_strength: f64,
 }
 
 impl Default for Hyperparameters {
@@ -30,7 +29,6 @@ impl Default for Hyperparameters {
             batch_size: 32,
             epoch_interval: 0.1,
             early_stopping_patience: 300,
-            regularization_strength: 0.0,
         }
     }
 }

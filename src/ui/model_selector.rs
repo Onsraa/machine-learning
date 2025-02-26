@@ -21,7 +21,7 @@ pub fn update_model_selector_ui(
                 ui.heading("Regression Models");
             });
 
-            // Determine if specific model types are selected (not just by classification status)
+            // Determine if specific model types are selected
             let is_lr = matches!(training_state.selected_model,
                 Some(ModelAlgorithm::LinearRegression(_, _)));
 

@@ -6,7 +6,6 @@ pub struct MLPConfig {
     pub hidden_layers: Vec<usize>,
     pub hidden_activations: Vec<Activation>,
     pub output_activation: Activation,
-    pub dropout_rate: f64,
 }
 
 impl Default for MLPConfig {
@@ -15,7 +14,6 @@ impl Default for MLPConfig {
             hidden_layers: vec![5],
             hidden_activations: vec![Activation::Tanh],
             output_activation: Activation::Linear,
-            dropout_rate: 0.0,
         }
     }
 }
@@ -27,7 +25,6 @@ impl MLPConfig {
             hidden_layers: vec![n_classes * 2],
             hidden_activations: vec![Activation::Tanh],
             output_activation: Activation::Tanh,
-            dropout_rate: 0.0,
         }
     }
 
@@ -37,7 +34,6 @@ impl MLPConfig {
             hidden_layers: vec![10],
             hidden_activations: vec![Activation::Tanh],
             output_activation: Activation::Linear,
-            dropout_rate: 0.0,
         }
     }
 

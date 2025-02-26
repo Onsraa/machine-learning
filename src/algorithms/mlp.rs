@@ -45,7 +45,6 @@ impl Layer {
     pub fn new(n_in: usize, n_out: usize, activation: Activation) -> Self {
         let mut rng = rand::thread_rng();
 
-        // Xavier/Glorot initialization
         let scale = (2.0 / (n_in + n_out) as f64).sqrt();
 
         let weights = DMatrix::from_fn(n_out, n_in, |_, _| {
