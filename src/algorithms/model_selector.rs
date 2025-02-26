@@ -1,70 +1,118 @@
-use crate::algorithms::learning_model::LearningModel;
-use crate::algorithms::linear_classifier::LinearClassifier;
-use crate::algorithms::linear_regression::LinearRegression;
-use crate::algorithms::mlp::MLP;
 use nalgebra::{DMatrix, DVector};
+use crate::algorithms::linear_regression::LinearRegression;
+use crate::algorithms::linear_classifier::LinearClassifier;
+use crate::algorithms::mlp::MLP;
+use crate::algorithms::rbf::RBF;
+use crate::algorithms::learning_model::LearningModel;
+use crate::data::universal_dataset::TaskType;
+use std::result::Result;
 
-/// Enumération pour encapsuler les modèles d’apprentissage disponibles.
+/// Enum that wraps all model algorithms and tracks their task type
+#[derive(Clone)]
 pub enum ModelAlgorithm {
-    LinearRegression(LinearRegression),
-    LinearClassifier(LinearClassifier),
-    MLP(MLP),
-    // Extensions futures : SVM, RBF, etc.
+    LinearRegression(LinearRegression, TaskType),
+    LinearClassifier(LinearClassifier, TaskType),
+    MLP(MLP, TaskType),
+    RBF(RBF, TaskType),
 }
 
 impl ModelAlgorithm {
-    /// Entraîne le modèle sur les données d’entrée `inputs` et les cibles `targets`
-    /// pendant `n_epochs` avec le taux d’apprentissage `learning_rate`.
-    /// Retourne la dernière perte moyenne calculée.
-    pub fn fit(
-        &mut self,
-        inputs: &DMatrix<f64>,
-        targets: &DMatrix<f64>,
-        learning_rate: f64,
-        n_epochs: usize,
-    ) -> f64 {
+    /// Creates a new LinearRegression model
+    pub fn new_linear_regression(input_dim: usize) -> Self {
+        ModelAlgorithm::LinearRegression(
+            LinearRegression::new(input_dim),
+            TaskType::Regression
+        )
+    }
+
+    /// Creates a new LinearClassifier model
+    pub fn new_linear_classifier(input_dim: usize, n_classes: usize) -> Self {
+        ModelAlgorithm::LinearClassifier(
+            LinearClassifier::new(input_dim, n_classes),
+            TaskType::Classification
+        )
+    }
+
+    /// Creates a new MLP model
+    pub fn new_mlp(mlp: MLP, is_classification: bool) -> Self {
+        let task_type = if is_classification {
+            TaskType::Classification
+        } else {
+            TaskType::Regression
+        };
+
+        ModelAlgorithm::MLP(mlp, task_type)
+    }
+
+    /// Creates a new RBF model
+    pub fn new_rbf(rbf: RBF) -> Self {
+        let task_type = if rbf.is_classification {
+            TaskType::Classification
+        } else {
+            TaskType::Regression
+        };
+
+        ModelAlgorithm::RBF(rbf, task_type)
+    }
+
+    /// Returns whether this model is for classification or regression
+    pub fn is_classification(&self) -> bool {
         match self {
-            ModelAlgorithm::LinearRegression(model) => {
-                let losses = model.fit(inputs, targets, learning_rate, n_epochs);
-                *losses.last().unwrap_or(&0.0)
-            }
-            ModelAlgorithm::LinearClassifier(model) => {
-                let losses = <LinearClassifier as LearningModel>::fit(
-                    model,
-                    inputs,
-                    targets,
-                    learning_rate,
-                    n_epochs,
-                );
-                *losses.last().unwrap_or(&0.0)
-            }
-            ModelAlgorithm::MLP(model) => {
-                let losses =
-                    <MLP as LearningModel>::fit(model, inputs, targets, learning_rate, n_epochs);
-                *losses.last().unwrap_or(&0.0)
-            }
+            ModelAlgorithm::LinearRegression(_, _) => false,
+            ModelAlgorithm::LinearClassifier(_, _) => true,
+            ModelAlgorithm::MLP(_, task_type) => *task_type == TaskType::Classification,
+            ModelAlgorithm::RBF(rbf, _) => rbf.is_classification,
         }
     }
 
-    /// Évalue le modèle sur les données et retourne une mesure d’erreur.
-    pub fn evaluate(&self, inputs: &DMatrix<f64>, targets: &DMatrix<f64>) -> f64 {
+    /// Gets the task type of this model
+    pub fn get_task_type(&self) -> TaskType {
         match self {
-            ModelAlgorithm::LinearRegression(model) => model.evaluate(inputs, targets),
-            ModelAlgorithm::LinearClassifier(model) => {
-                <LinearClassifier as LearningModel>::evaluate(model, inputs, targets)
-            }
-            ModelAlgorithm::MLP(model) => <MLP as LearningModel>::evaluate(model, inputs, targets),
+            ModelAlgorithm::LinearRegression(_, task_type) => *task_type,
+            ModelAlgorithm::LinearClassifier(_, task_type) => *task_type,
+            ModelAlgorithm::MLP(_, task_type) => *task_type,
+            ModelAlgorithm::RBF(_, task_type) => *task_type,
         }
     }
 
-    /// Effectue une prédiction pour une entrée donnée.
-    pub fn predict(&self, x: &DVector<f64>) -> DVector<f64> {
+    pub fn fit(&mut self, inputs: &DMatrix<f64>, targets: &DMatrix<f64>, learning_rate: f64, n_epochs: usize) -> Result<f64, String> {
         match self {
-            ModelAlgorithm::LinearRegression(model) => model.predict(x),
-            ModelAlgorithm::LinearClassifier(model) => {
-                <LinearClassifier as LearningModel>::predict(model, x)
-            }
-            ModelAlgorithm::MLP(model) => <MLP as LearningModel>::predict(model, x),
+            ModelAlgorithm::LinearRegression(model, _) => {
+                let losses = model.fit(inputs, targets, learning_rate, n_epochs)?;
+                Ok(*losses.last().unwrap_or(&0.0))
+            },
+            ModelAlgorithm::LinearClassifier(model, _) => {
+                let losses = model.fit(inputs, targets, learning_rate, n_epochs)?;
+                Ok(*losses.last().unwrap_or(&0.0))
+            },
+            ModelAlgorithm::MLP(model, task_type) => {
+                let losses = model.fit(inputs, targets, learning_rate, n_epochs, *task_type)?;
+                Ok(*losses.last().unwrap_or(&0.0))
+            },
+            ModelAlgorithm::RBF(model, _) => {
+                let losses = model.fit(inputs, targets, learning_rate, n_epochs)?;
+                Ok(*losses.last().unwrap_or(&0.0))
+            },
+        }
+    }
+
+    pub fn evaluate(&self, inputs: &DMatrix<f64>, targets: &DMatrix<f64>) -> Result<f64, String> {
+        match self {
+            ModelAlgorithm::LinearRegression(model, _) => model.evaluate(inputs, targets),
+            ModelAlgorithm::LinearClassifier(model, _) => model.evaluate(inputs, targets),
+            ModelAlgorithm::MLP(model, task_type) => {
+                model.evaluate(inputs, targets, *task_type)
+            },
+            ModelAlgorithm::RBF(model, _) => model.evaluate(inputs, targets),
+        }
+    }
+
+    pub fn predict(&self, x: &DVector<f64>) -> Result<DVector<f64>, String> {
+        match self {
+            ModelAlgorithm::LinearRegression(model, _) => model.predict(x),
+            ModelAlgorithm::LinearClassifier(model, _) => model.predict(x),
+            ModelAlgorithm::MLP(model, _) => model.predict(x),
+            ModelAlgorithm::RBF(model, _) => model.predict(x),
         }
     }
 }
