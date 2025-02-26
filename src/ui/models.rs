@@ -1,7 +1,7 @@
 use crate::data::{DataModel, ModelState};
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
-use egui::{Button, Color32, Stroke};
+use egui::{Button, Stroke, Color32};
 
 pub fn update_test_case_ui(
     mut contexts: EguiContexts,
@@ -26,11 +26,8 @@ pub fn update_test_case_ui(
         ];
         for (label, variant) in variants {
             let is_selected = *data_model == variant;
-            let btn = Button::new(label).stroke(if is_selected {
-                Stroke::new(2.0, Color32::GOLD)
-            } else {
-                Stroke::new(1.0, Color32::LIGHT_GRAY)
-            });
+            let btn = Button::new(label)
+                .stroke(if is_selected { Stroke::new(2.0, Color32::GOLD) } else { Stroke::new(1.0, Color32::LIGHT_GRAY) });
             if ui.add(btn).clicked() {
                 if let ModelState::Ready = *current_state.get() {
                     *data_model = variant;
