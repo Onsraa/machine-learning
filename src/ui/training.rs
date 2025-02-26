@@ -1,7 +1,6 @@
 use crate::resources::training::*;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
-use egui_plot::*;
 
 pub fn training_ui_system(mut contexts: EguiContexts, mut training_state: ResMut<TrainingState>) {
     egui::Window::new("Training Control").show(contexts.ctx_mut(), |ui| {
@@ -56,7 +55,7 @@ pub fn training_ui_system(mut contexts: EguiContexts, mut training_state: ResMut
         ui.horizontal(|ui| {
             ui.label("Batch Size:");
             ui.add(egui::DragValue::new(&mut training_state.hyperparameters.batch_size)
-                .clamp_range(1..=1024));
+                .range(1..=1024));
         });
         ui.add_space(5.0);
 
@@ -140,7 +139,7 @@ fn plot_losses_with_legend(ui: &mut egui::Ui, metrics: &TrainingMetrics) {
     Plot::new("training_plot")
         .legend(Legend::default())
         .height(200.0)
-        .y_axis_width(2)
+        .y_axis_min_width(2.0)
         .allow_zoom(true)
         .allow_drag(true)
         .show(ui, |plot_ui| {

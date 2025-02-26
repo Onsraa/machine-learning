@@ -6,12 +6,12 @@ use std::result::Result;
 
 #[derive(Clone)]
 pub struct RBF {
-    pub centers: DMatrix<f64>,       // Dimensions: (n_centers, input_dim)
-    pub weights: DVector<f64>,       // Dimensions: (n_centers)
+    pub centers: DMatrix<f64>,
+    pub weights: DVector<f64>,
     pub bias: f64,
-    pub gamma: f64,                  // Width parameter (gamma = 1/(2σ²))
+    pub gamma: f64,
     pub is_classification: bool,
-    pub update_centers: bool,        // If true, update centers with K-means
+    pub update_centers: bool,
     pub max_kmeans_iters: usize,
 }
 
@@ -19,7 +19,7 @@ impl RBF {
     /// Creates a new RBF model.
     /// - `input_dim`: input dimension.
     /// - `n_centers`: number of centers (K).
-    /// - `gamma`: width parameter (gamma = 1/(2σ²)). Higher values give narrower bell curves.
+    /// - `gamma`: width parameter. Higher values give narrower bell curves.
     ///   Typical values range from 0.1 to 10, depending on data scale.
     /// - `is_classification`: true for classification, false for regression.
     /// - `update_centers`: if true, elects centers via K-means during fit.
@@ -50,7 +50,6 @@ impl RBF {
     }
 
     /// Lloyd's algorithm (K-means) to elect centers from data.
-    /// If k exceeds the number of samples, uses n_samples instead.
     fn k_means(data: &DMatrix<f64>, k: usize, max_iters: usize) -> DMatrix<f64> {
         let n_samples = data.nrows();
         let dim = data.ncols();

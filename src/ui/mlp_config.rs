@@ -3,7 +3,6 @@ use crate::resources::training::TrainingState;
 use crate::algorithms::model_selector::ModelAlgorithm;
 use crate::algorithms::mlp::{Activation, MLP};
 use crate::data::DataModel;
-use crate::data::universal_dataset::TaskType;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
 

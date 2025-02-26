@@ -17,7 +17,6 @@ impl LinearClassifier {
         }
 
         let mut rng = rand::thread_rng();
-        // Xavier/Glorot initialization
         let scale = 1.0 / (input_dim as f64).sqrt();
         let classifiers = (0..n_classes)
             .map(|_| DVector::from_fn(input_dim, |_, _| rng.gen_range(-scale..scale)))
@@ -34,7 +33,7 @@ impl LinearClassifier {
         (0..self.n_classes)
             .map(|i| {
                 let value = self.classifiers[i].dot(x) + self.biases[i];
-                value.tanh() // Apply tanh for consistent activation
+                value.tanh()
             })
             .collect()
     }

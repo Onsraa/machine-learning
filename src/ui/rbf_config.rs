@@ -38,20 +38,11 @@ pub fn rbf_config_ui(mut contexts: EguiContexts, mut training_state: ResMut<Trai
             });
             ui.separator();
 
-            // Add help text about RBF parameters
-            ui.collapsing("About RBF parameters", |ui| {
-                ui.label("Centers: Points in input space where RBF kernels are placed. More centers can model more complex functions.");
-                ui.label("Gamma: Width parameter that controls how quickly activation falls with distance from center (gamma = 1/(2σ²)).");
-                ui.label("Higher gamma = narrower bell curves = more local influence.");
-                ui.label("K-means: When enabled, centers are chosen from data points using K-means clustering.");
-            });
-            ui.separator();
-
             // Number of centers (K)
             ui.label("Number of centers:");
             let current_centers = rbf_model.centers.nrows() as u32;
             let mut new_centers = current_centers;
-            if ui.add(DragValue::new(&mut new_centers).speed(1).clamp_range(1..=100)).changed() {
+            if ui.add(DragValue::new(&mut new_centers).speed(1).range(1..=100)).changed() {
                 println!("RBF: Changed centers from {} to {}", current_centers, new_centers);
                 let input_dim = rbf_model.centers.ncols();
                 let mut rng = rand::thread_rng();
@@ -110,7 +101,7 @@ pub fn rbf_config_ui(mut contexts: EguiContexts, mut training_state: ResMut<Trai
                 ui.horizontal(|ui| {
                     ui.label("K-means max iterations:");
                     let mut new_max_iters = rbf_model.max_kmeans_iters as u32;
-                    if ui.add(DragValue::new(&mut new_max_iters).speed(10).clamp_range(10..=1000)).changed() {
+                    if ui.add(DragValue::new(&mut new_max_iters).speed(10).range(10..=1000)).changed() {
                         println!("RBF: Changed max_kmeans_iters from {} to {}", rbf_model.max_kmeans_iters, new_max_iters);
                         rbf_model.max_kmeans_iters = new_max_iters as usize;
                     }

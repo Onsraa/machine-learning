@@ -1,5 +1,4 @@
 use crate::algorithms::model_selector::ModelAlgorithm;
-use crate::algorithms::mlp::{Activation, MLP};
 use crate::data::{DataModel, DatasetConverter};
 use crate::resources::training::TrainingState;
 use bevy::prelude::*;
