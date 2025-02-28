@@ -30,12 +30,11 @@ impl RBF {
         }
 
         let mut rng = rand::thread_rng();
-        // Initialize centers in range [-1, 1]
+        // Initialiser les centres dans l'intervalle [-1, 1] (cela peut rester comme avant)
         let centers = DMatrix::from_fn(n_centers, input_dim, |_, _| rng.gen_range(-1.0..1.0));
 
-        // Initialize weights with small random values scaled by 1/sqrt(n_centers)
-        let scale = 1.0 / (n_centers as f64).sqrt();
-        let weights = DVector::from_fn(n_centers, |_, _| rng.gen_range(-scale..scale));
+        // Initialiser les poids avec un intervalle fixe
+        let weights = DVector::from_fn(n_centers, |_, _| rng.gen_range(-0.1..0.1));
 
         let bias = rng.gen_range(-0.1..0.1);
         Self {
@@ -135,7 +134,6 @@ impl RBF {
     }
 
     /// Calculate RBF activations for a given input.
-    /// φᵢ(x) = exp(–γ * ||x – centerᵢ||²)
     pub fn compute_phi(&self, x: &DVector<f64>) -> DVector<f64> {
         let n_centers = self.centers.nrows();
         let mut phi = DVector::zeros(n_centers);
@@ -239,8 +237,15 @@ impl LearningModel for RBF {
             let x_i = DVector::from_iterator(x.ncols(), x.row(i).iter().cloned());
             let target = y[(i, 0)];
             let output = self.forward(&x_i);
-            let error = output - target;
-            total_loss += error * error;
+
+            if self.is_classification {
+                let predicted_class = if output >= 0.0 { 1.0 } else { 0.0 };
+                let error = if (predicted_class - target).abs() < 1e-10 { 0.0 } else { 1.0 };
+                total_loss += error;
+            } else {
+                let error = output - target;
+                total_loss += error * error;
+            }
         }
 
         Ok(total_loss / n_samples as f64)

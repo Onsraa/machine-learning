@@ -12,8 +12,8 @@ pub struct LinearRegression {
 impl LinearRegression {
     pub fn new(input_dim: usize) -> Self {
         let mut rng = rand::thread_rng();
-        let scale = 1.0 / (input_dim as f64).sqrt();
-        let weights = DVector::from_fn(input_dim, |_, _| rng.gen_range(-scale..scale));
+        // Remplacer l'initialisation Xavier par un intervalle fixe
+        let weights = DVector::from_fn(input_dim, |_, _| rng.gen_range(-0.1..0.1));
         let bias = rng.gen_range(-0.1..0.1);
         Self { weights, bias }
     }

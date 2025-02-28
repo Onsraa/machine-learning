@@ -17,9 +17,8 @@ impl LinearClassifier {
         }
 
         let mut rng = rand::thread_rng();
-        let scale = 1.0 / (input_dim as f64).sqrt();
         let classifiers = (0..n_classes)
-            .map(|_| DVector::from_fn(input_dim, |_, _| rng.gen_range(-scale..scale)))
+            .map(|_| DVector::from_fn(input_dim, |_, _| rng.gen_range(-0.1..0.1)))
             .collect();
         let biases = (0..n_classes).map(|_| rng.gen_range(-0.1..0.1)).collect();
         Self {
@@ -181,10 +180,15 @@ impl LearningModel for LinearClassifier {
             return Err(format!("Expected y to have 1 column, got {}", y.ncols()));
         }
 
-        let targets: Result<Vec<usize>, String> = y.column(0).iter()
+        let targets: Result<Vec<usize>, String> = y
+            .column(0)
+            .iter()
             .map(|&val| {
                 if val < 0.0 || val.fract() != 0.0 {
-                    Err(format!("Invalid class label: {}. Must be a non-negative integer", val))
+                    Err(format!(
+                        "Invalid class label: {}. Must be a non-negative integer",
+                        val
+                    ))
                 } else {
                     Ok(val as usize)
                 }
@@ -200,10 +204,15 @@ impl LearningModel for LinearClassifier {
             return Err(format!("Expected y to have 1 column, got {}", y.ncols()));
         }
 
-        let targets: Result<Vec<usize>, String> = y.column(0).iter()
+        let targets: Result<Vec<usize>, String> = y
+            .column(0)
+            .iter()
             .map(|&val| {
                 if val < 0.0 || val.fract() != 0.0 {
-                    Err(format!("Invalid class label: {}. Must be a non-negative integer", val))
+                    Err(format!(
+                        "Invalid class label: {}. Must be a non-negative integer",
+                        val
+                    ))
                 } else {
                     Ok(val as usize)
                 }

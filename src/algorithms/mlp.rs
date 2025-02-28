@@ -45,10 +45,9 @@ impl Layer {
     pub fn new(n_in: usize, n_out: usize, activation: Activation) -> Self {
         let mut rng = rand::thread_rng();
 
-        let scale = (2.0 / (n_in + n_out) as f64).sqrt();
-
+        // Remplacer l'initialisation Xavier par un intervalle fixe
         let weights = DMatrix::from_fn(n_out, n_in, |_, _| {
-            rng.gen_range(-scale..scale)
+            rng.gen_range(-0.1..0.1)
         });
 
         let biases = DVector::from_fn(n_out, |_, _| {

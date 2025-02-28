@@ -208,7 +208,7 @@ pub fn training_system(
 
                         // Affichage de prédictions pour quelques échantillons de test
                         println!("Sample predictions:");
-                        for i in 0..min(3, test_inputs.nrows()) {
+                        for i in 0..test_inputs.nrows() {
                             let input = DVector::from_iterator(
                                 test_inputs.ncols(),
                                 test_inputs.row(i).iter().cloned()
@@ -223,11 +223,11 @@ pub fn training_system(
                         training_state.error_message = None;
 
                         // Vérification de l'early stopping
-                        if training_state.metrics.should_stop_early(early_stopping_patience) {
-                            println!("Early stopping triggered - no improvement for {} epochs",
-                                     early_stopping_patience);
-                            training_state.is_training = false;
-                        }
+                        // if training_state.metrics.should_stop_early(early_stopping_patience) {
+                        //     println!("Early stopping triggered - no improvement for {} epochs",
+                        //              early_stopping_patience);
+                        //     training_state.is_training = false;
+                        // }
                     },
                     Err(e) => {
                         training_state.error_message = Some(format!("Error evaluating model: {}", e));
