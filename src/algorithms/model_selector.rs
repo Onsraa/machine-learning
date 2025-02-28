@@ -3,6 +3,7 @@ use crate::algorithms::linear_regression::LinearRegression;
 use crate::algorithms::linear_classifier::LinearClassifier;
 use crate::algorithms::mlp::MLP;
 use crate::algorithms::rbf::RBF;
+use crate::algorithms::svm::{SVM, KernelType}; // Ajout de cette ligne
 use crate::algorithms::learning_model::LearningModel;
 use crate::data::universal_dataset::TaskType;
 use std::result::Result;
@@ -14,6 +15,7 @@ pub enum ModelAlgorithm {
     LinearClassifier(LinearClassifier, TaskType),
     MLP(MLP, TaskType),
     RBF(RBF, TaskType),
+    SVM(SVM, TaskType), // Ajout de cette ligne
 }
 
 impl ModelAlgorithm {
@@ -55,6 +57,12 @@ impl ModelAlgorithm {
         ModelAlgorithm::RBF(rbf, task_type)
     }
 
+    /// Creates a new SVM model
+    pub fn new_svm(svm: SVM) -> Self {
+        // SVM est toujours pour la classification binaire
+        ModelAlgorithm::SVM(svm, TaskType::Classification)
+    }
+
     /// Returns whether this model is for classification or regression
     pub fn is_classification(&self) -> bool {
         match self {
@@ -62,6 +70,7 @@ impl ModelAlgorithm {
             ModelAlgorithm::LinearClassifier(_, _) => true,
             ModelAlgorithm::MLP(_, task_type) => *task_type == TaskType::Classification,
             ModelAlgorithm::RBF(rbf, _) => rbf.is_classification,
+            ModelAlgorithm::SVM(_, _) => true, // SVM est toujours pour la classification
         }
     }
 
@@ -72,6 +81,7 @@ impl ModelAlgorithm {
             ModelAlgorithm::LinearClassifier(_, task_type) => *task_type,
             ModelAlgorithm::MLP(_, task_type) => *task_type,
             ModelAlgorithm::RBF(_, task_type) => *task_type,
+            ModelAlgorithm::SVM(_, task_type) => *task_type,
         }
     }
 
@@ -93,6 +103,10 @@ impl ModelAlgorithm {
                 let losses = model.fit(inputs, targets, learning_rate, n_epochs)?;
                 Ok(*losses.last().unwrap_or(&0.0))
             },
+            ModelAlgorithm::SVM(model, _) => {
+                let losses = model.fit(inputs, targets, learning_rate, n_epochs)?;
+                Ok(*losses.last().unwrap_or(&0.0))
+            },
         }
     }
 
@@ -104,6 +118,7 @@ impl ModelAlgorithm {
                 model.evaluate(inputs, targets, *task_type)
             },
             ModelAlgorithm::RBF(model, _) => model.evaluate(inputs, targets),
+            ModelAlgorithm::SVM(model, _) => model.evaluate(inputs, targets),
         }
     }
 
@@ -113,6 +128,7 @@ impl ModelAlgorithm {
             ModelAlgorithm::LinearClassifier(model, _) => model.predict(x),
             ModelAlgorithm::MLP(model, _) => model.predict(x),
             ModelAlgorithm::RBF(model, _) => model.predict(x),
+            ModelAlgorithm::SVM(model, _) => model.predict(x),
         }
     }
 }

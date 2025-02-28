@@ -183,6 +183,7 @@ pub fn training_system(
                 "RBF (Regression)"
             }
         },
+        Some(ModelAlgorithm::SVM(_, _)) => "SVM (Classification)",
         None => "Unknown",
     };
 

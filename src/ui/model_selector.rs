@@ -3,6 +3,7 @@ use crate::data::DataModel;
 use crate::algorithms::model_selector::ModelAlgorithm;
 use crate::algorithms::mlp::{MLP, Activation};
 use crate::algorithms::rbf::RBF;
+use crate::algorithms::svm::{SVM, KernelType};
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
 use egui::{Button, Stroke, Color32};
@@ -16,7 +17,6 @@ pub fn update_model_selector_ui(
         ui.label("Choose a model for training:");
 
         if !data_model.is_classification() {
-            // Options for regression
             ui.horizontal(|ui| {
                 ui.heading("Regression Models");
             });
@@ -31,7 +31,6 @@ pub fn update_model_selector_ui(
             let is_rbf_reg = matches!(training_state.selected_model,
                 Some(ModelAlgorithm::RBF(_, _)) if !training_state.selected_model.as_ref().unwrap().is_classification());
 
-            // Linear Regression button
             let lr_button = Button::new("Linear Regression")
                 .stroke(if is_lr { Stroke::new(2.0, Color32::GREEN) } else { Stroke::new(0.5, Color32::LIGHT_GRAY) });
             if ui.add(lr_button).clicked() {
@@ -64,30 +63,27 @@ pub fn update_model_selector_ui(
                 }
             }
 
-            // RBF Regression button
             let rbf_reg_button = Button::new("RBF (Regression)")
                 .stroke(if is_rbf_reg { Stroke::new(2.0, Color32::GREEN) } else { Stroke::new(0.5, Color32::LIGHT_GRAY) });
             if ui.add(rbf_reg_button).clicked() {
                 let rbf = RBF::new(
                     data_model.input_dim(),
-                    10,        // number of centers
-                    1.0,       // gamma - reasonable default for normalized data
-                    false,     // regression
-                    true,      // use k-means to elect centers
-                    100,       // max k-means iterations
+                    10,
+                    1.0,
+                    false,
+                    true,
+                    100,
                 );
                 training_state.selected_model = Some(ModelAlgorithm::new_rbf(rbf));
                 println!("Selected RBF model for regression");
             }
         } else {
-            // Options for classification
             ui.horizontal(|ui| {
                 ui.heading("Classification Models");
             });
 
             let n_classes = data_model.n_classes().unwrap_or(2);
 
-            // Determine if specific model types are selected
             let is_lc = matches!(training_state.selected_model,
                 Some(ModelAlgorithm::LinearClassifier(_, _)));
 
@@ -97,7 +93,9 @@ pub fn update_model_selector_ui(
             let is_rbf_class = matches!(training_state.selected_model,
                 Some(ModelAlgorithm::RBF(_, _)) if training_state.selected_model.as_ref().unwrap().is_classification());
 
-            // Linear Classifier button
+            let is_svm = matches!(training_state.selected_model,
+                Some(ModelAlgorithm::SVM(_, _)));
+
             let lc_button = Button::new("Linear Classifier")
                 .stroke(if is_lc { Stroke::new(2.0, Color32::GREEN) } else { Stroke::new(0.5, Color32::LIGHT_GRAY) });
             if ui.add(lc_button).clicked() {
@@ -108,7 +106,6 @@ pub fn update_model_selector_ui(
                 println!("Selected Linear Classifier model with {} classes", n_classes);
             }
 
-            // MLP Classification button
             let mlp_class_button = Button::new("MLP (Classification)")
                 .stroke(if is_mlp_class { Stroke::new(2.0, Color32::GREEN) } else { Stroke::new(0.5, Color32::LIGHT_GRAY) });
             if ui.add(mlp_class_button).clicked() {
@@ -139,16 +136,36 @@ pub fn update_model_selector_ui(
                     data_model.input_dim(),
                     10,
                     1.0,
-                    true,      // classification
+                    true,
                     true,
                     100,
                 );
                 training_state.selected_model = Some(ModelAlgorithm::new_rbf(rbf));
                 println!("Selected RBF model for classification");
             }
+
+            // SVM button - Ajout du bouton SVM
+            if n_classes == 2 {  // SVM uniquement pour classification binaire
+                let svm_button = Button::new("SVM (Classification)")
+                    .stroke(if is_svm { Stroke::new(2.0, Color32::GREEN) } else { Stroke::new(0.5, Color32::LIGHT_GRAY) });
+                if ui.add(svm_button).clicked() {
+                    let svm = SVM::new(
+                        data_model.input_dim(),
+                        KernelType::RBF,
+                        2,
+                        1.0,
+                        1.0,
+                        1e-3,
+                        1000,
+                    );
+                    training_state.selected_model = Some(ModelAlgorithm::new_svm(svm));
+                    println!("Selected SVM model for binary classification");
+                }
+            } else {
+                ui.label("SVM only supports binary classification");
+            }
         }
 
-        // Show currently selected model
         ui.separator();
         match &training_state.selected_model {
             Some(model) => {
@@ -165,6 +182,7 @@ pub fn update_model_selector_ui(
                     } else {
                         "RBF (Regression)"
                     },
+                    ModelAlgorithm::SVM(_, _) => "SVM (Classification)",
                 };
                 ui.colored_label(Color32::GREEN, format!("Selected model: {}", model_type));
             },

@@ -8,6 +8,7 @@ use crate::ui::rbf_config::rbf_config_ui;
 use crate::ui::training::training_ui_system;
 use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
+use crate::ui::svm_config::svm_config_ui;
 
 pub struct UiPlugin;
 
@@ -22,5 +23,6 @@ impl Plugin for UiPlugin {
         app.add_systems(Update, mlp_config_ui);
         app.add_systems(Update, update_test_case_ui);
         app.add_systems(Update, rbf_config_ui);
+        app.add_systems(Update, svm_config_ui);
     }
 }

@@ -28,14 +28,9 @@ impl RBF {
         if gamma <= 0.0 {
             panic!("Gamma must be positive");
         }
-
         let mut rng = rand::thread_rng();
-        // Initialiser les centres dans l'intervalle [-1, 1] (cela peut rester comme avant)
         let centers = DMatrix::from_fn(n_centers, input_dim, |_, _| rng.gen_range(-1.0..1.0));
-
-        // Initialiser les poids avec un intervalle fixe
         let weights = DVector::from_fn(n_centers, |_, _| rng.gen_range(-0.1..0.1));
-
         let bias = rng.gen_range(-0.1..0.1);
         Self {
             centers,
