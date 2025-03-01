@@ -79,7 +79,6 @@ impl TrainingMetrics {
         self.test_losses.push_back(test_loss);
         self.current_epoch += 1;
 
-        // Early stopping tracking
         if test_loss < self.best_test_loss {
             self.best_test_loss = test_loss;
             self.epochs_since_improvement = 0;
@@ -107,21 +106,19 @@ impl TrainingMetrics {
             return 0.0;
         }
 
-        // Calculate approximate convergence based on loss trend
         let recent_losses: Vec<_> = self.test_losses.iter().rev().take(5).collect();
         let last_loss = *recent_losses[0];
 
-        // If we've reached a very small loss, consider training nearly complete
         if last_loss < 0.01 {
             return 0.95;
         }
 
-        // Calculate rate of improvement
-        let avg_improvement = recent_losses.windows(2)
+        let avg_improvement = recent_losses
+            .windows(2)
             .map(|w| (w[1] - w[0]).abs() / w[1].max(0.0001))
-            .sum::<f64>() / 4.0;
+            .sum::<f64>()
+            / 4.0;
 
-        // If improvement rate is very small, convergence is likely
         let convergence = 1.0 - (avg_improvement * 10.0).min(1.0);
         convergence.max(0.0).min(0.9)
     }

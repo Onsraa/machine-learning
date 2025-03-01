@@ -6,7 +6,6 @@ use bevy_egui::{egui, EguiContexts};
 use egui::{Slider, DragValue, ComboBox};
 
 pub fn svm_config_ui(mut contexts: EguiContexts, mut training_state: ResMut<TrainingState>) {
-    // Vérifier si un modèle SVM est sélectionné
     let is_svm_model = match &training_state.selected_model {
         Some(ModelAlgorithm::SVM(_, _)) => true,
         _ => false,

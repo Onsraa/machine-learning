@@ -2,15 +2,16 @@ use crate::algorithms::learning_model::LearningModel;
 use nalgebra::{DMatrix, DVector};
 use std::result::Result;
 use std::f64;
+use serde::{Serialize, Deserialize};
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
 pub enum KernelType {
     Linear,
     Polynomial,
     RBF,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct SVM {
     pub input_dim: usize,
     pub alphas: DVector<f64>,
@@ -18,12 +19,12 @@ pub struct SVM {
     pub support_vectors: Option<DMatrix<f64>>,
     pub support_vector_labels: Option<DVector<f64>>,
     pub kernel_type: KernelType,
-    pub polynomial_degree: usize,  // Pour le noyau polynomial
-    pub gamma: f64,                // Pour le noyau RBF
-    pub c: f64,                    // Paramètre de régularisation
-    pub is_classification: bool,   // Toujours vrai pour SVM, mais gardé pour cohérence
-    pub tolerance: f64,            // Tolérance pour conditions KKT
-    pub max_iterations: usize,     // Nombre max d'itérations pour SMO
+    pub polynomial_degree: usize,
+    pub gamma: f64,
+    pub c: f64,
+    pub is_classification: bool,
+    pub tolerance: f64,
+    pub max_iterations: usize,
 }
 
 impl SVM {
@@ -62,7 +63,6 @@ impl SVM {
         }
     }
 
-    // Calcul du noyau entre deux vecteurs
     fn kernel(&self, x1: &DVector<f64>, x2: &DVector<f64>) -> f64 {
         match self.kernel_type {
             KernelType::Linear => x1.dot(x2),
@@ -78,7 +78,6 @@ impl SVM {
         }
     }
 
-    // Calcul de la matrice de Gram (matrice de noyau)
     fn compute_kernel_matrix(&self, x: &DMatrix<f64>) -> DMatrix<f64> {
         let n_samples = x.nrows();
         let mut kernel_matrix = DMatrix::zeros(n_samples, n_samples);
@@ -94,7 +93,6 @@ impl SVM {
         kernel_matrix
     }
 
-    // Algorithme SMO (Sequential Minimal Optimization) simplifié
     fn smo(&mut self, x: &DMatrix<f64>, y: &DVector<f64>) -> Result<(), String> {
         let n_samples = x.nrows();
 
@@ -110,41 +108,31 @@ impl SVM {
         let mut examine_all = true;
         let mut iteration = 0;
 
-        // Boucle principale SMO
         while (num_changed_alphas > 0 || examine_all) && iteration < self.max_iterations {
             num_changed_alphas = 0;
 
-            // Si examine_all est vrai, examiner tous les alphas
-            // Sinon, examiner uniquement les alphas non-bordures (0 < alpha < C)
             for i in 0..n_samples {
                 if !examine_all && self.alphas[i] <= 0.0 && self.alphas[i] >= self.c {
                     continue;
                 }
 
-                // Calculer l'erreur pour l'exemple i
                 let error_i = self.predict_value(x, &kernel_matrix, i) - y[i];
 
-                // Vérifier les conditions KKT pour alpha_i
                 let r_i = error_i * y[i];
 
-                // Si les conditions KKT sont violées
                 if (r_i < -self.tolerance && self.alphas[i] < self.c) ||
                     (r_i > self.tolerance && self.alphas[i] > 0.0) {
 
-                    // Chercher le second alpha à optimiser (heuristique simple)
-                    let mut j = (i + 1) % n_samples; // Commencer par l'alpha suivant
+                    let mut j = (i + 1) % n_samples;
                     if i == j {
                         j = (j + 1) % n_samples;
                     }
 
-                    // Calculer l'erreur pour l'exemple j
                     let error_j = self.predict_value(x, &kernel_matrix, j) - y[j];
 
-                    // Sauvegarder les anciennes valeurs
                     let alpha_i_old = self.alphas[i];
                     let alpha_j_old = self.alphas[j];
 
-                    // Calculer les limites pour alpha_j
                     let (l, h) = if y[i] == y[j] {
                         (f64::max(0.0, self.alphas[j] + self.alphas[i] - self.c),
                          f64::min(self.c, self.alphas[j] + self.alphas[i]))
@@ -157,29 +145,22 @@ impl SVM {
                         continue;
                     }
 
-                    // Calculer eta (second dérivée de l'objectif)
                     let eta = 2.0 * kernel_matrix[(i, j)] - kernel_matrix[(i, i)] - kernel_matrix[(j, j)];
 
-                    // Si eta >= 0, passer à un autre j
                     if eta >= 0.0 {
                         continue;
                     }
 
-                    // Calculer la nouvelle valeur pour alpha_j
                     self.alphas[j] = alpha_j_old - (y[j] * (error_i - error_j)) / eta;
 
-                    // Clipper alpha_j
                     self.alphas[j] = f64::min(f64::max(self.alphas[j], l), h);
 
-                    // Si le changement est trop petit, passer à un autre j
                     if f64::abs(self.alphas[j] - alpha_j_old) < 1e-5 {
                         continue;
                     }
 
-                    // Mettre à jour alpha_i
                     self.alphas[i] = alpha_i_old + y[i] * y[j] * (alpha_j_old - self.alphas[j]);
 
-                    // Calculer les nouveaux biais
                     let b1 = self.bias - error_i -
                         y[i] * (self.alphas[i] - alpha_i_old) * kernel_matrix[(i, i)] -
                         y[j] * (self.alphas[j] - alpha_j_old) * kernel_matrix[(i, j)];
@@ -188,7 +169,6 @@ impl SVM {
                         y[i] * (self.alphas[i] - alpha_i_old) * kernel_matrix[(i, j)] -
                         y[j] * (self.alphas[j] - alpha_j_old) * kernel_matrix[(j, j)];
 
-                    // Mettre à jour le biais
                     if 0.0 < self.alphas[i] && self.alphas[i] < self.c {
                         self.bias = b1;
                     } else if 0.0 < self.alphas[j] && self.alphas[j] < self.c {
@@ -210,7 +190,6 @@ impl SVM {
             iteration += 1;
         }
 
-        // Extraire les vecteurs de support
         let mut support_vectors = Vec::new();
         let mut support_vector_labels = Vec::new();
         let mut support_vector_alphas = Vec::new();
@@ -300,7 +279,6 @@ impl LearningModel for SVM {
             return Err(format!("Expected y to have 1 column, got {}", y.ncols()));
         }
 
-        // Convertir les étiquettes en {-1, 1} si nécessaire
         let mut y_proc = DVector::zeros(y.nrows());
         for i in 0..y.nrows() {
             if y[(i, 0)] <= 0.0 {
@@ -310,10 +288,8 @@ impl LearningModel for SVM {
             }
         }
 
-        // Exécuter l'algorithme SMO
         match self.smo(x, &y_proc) {
             Ok(_) => {
-                // Retourner une seule valeur de perte (dans ce cas, le nombre de vecteurs support divisé par n_samples)
                 let loss = if let Some(sv) = &self.support_vectors {
                     sv.nrows() as f64 / x.nrows() as f64
                 } else {
@@ -359,7 +335,7 @@ impl LearningModel for SVM {
         }
 
         let accuracy = correct as f64 / n_samples as f64;
-        Ok(1.0 - accuracy)  // Loss = 1 - accuracy
+        Ok(1.0 - accuracy)
     }
 
     fn predict(&self, x: &DVector<f64>) -> Result<DVector<f64>, String> {

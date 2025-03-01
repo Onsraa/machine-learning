@@ -3,9 +3,9 @@ mod components;
 mod data;
 mod params;
 mod plugins;
+mod resources;
 mod systems;
 mod ui;
-mod resources;
 
 use crate::plugins::models::ModelsPlugin;
 use crate::plugins::setup::SetupPlugin;

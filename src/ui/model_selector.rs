@@ -1,12 +1,12 @@
-use crate::resources::training::TrainingState;
-use crate::data::DataModel;
+use crate::algorithms::mlp::{Activation, MLP};
 use crate::algorithms::model_selector::ModelAlgorithm;
-use crate::algorithms::mlp::{MLP, Activation};
 use crate::algorithms::rbf::RBF;
-use crate::algorithms::svm::{SVM, KernelType};
+use crate::algorithms::svm::{KernelType, SVM};
+use crate::data::DataModel;
+use crate::resources::training::TrainingState;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
-use egui::{Button, Stroke, Color32};
+use egui::{Button, Color32, Stroke};
 
 pub fn update_model_selector_ui(
     mut contexts: EguiContexts,
@@ -21,7 +21,6 @@ pub fn update_model_selector_ui(
                 ui.heading("Regression Models");
             });
 
-            // Determine if specific model types are selected
             let is_lr = matches!(training_state.selected_model,
                 Some(ModelAlgorithm::LinearRegression(_, _)));
 
@@ -40,7 +39,6 @@ pub fn update_model_selector_ui(
                 println!("Selected Linear Regression model");
             }
 
-            // MLP Regression button
             let mlp_reg_button = Button::new("MLP (Regression)")
                 .stroke(if is_mlp_reg { Stroke::new(2.0, Color32::GREEN) } else { Stroke::new(0.5, Color32::LIGHT_GRAY) });
             if ui.add(mlp_reg_button).clicked() {
@@ -48,12 +46,12 @@ pub fn update_model_selector_ui(
                     data_model.input_dim(),
                     vec![5],
                     1,
-                    vec![Activation::Tanh, Activation::Linear], // Linear output for regression
+                    vec![Activation::Tanh, Activation::Linear],
                 ) {
                     Ok(mlp) => {
                         training_state.selected_model = Some(ModelAlgorithm::new_mlp(
                             mlp,
-                            false, // Not classification
+                            false,
                         ));
                         println!("Selected MLP model for regression");
                     },
@@ -118,7 +116,7 @@ pub fn update_model_selector_ui(
                     Ok(mlp) => {
                         training_state.selected_model = Some(ModelAlgorithm::new_mlp(
                             mlp,
-                            true, // Is classification
+                            true,
                         ));
                         println!("Selected MLP model for classification with {} classes", n_classes);
                     },
@@ -128,7 +126,6 @@ pub fn update_model_selector_ui(
                 }
             }
 
-            // RBF Classification button
             let rbf_class_button = Button::new("RBF (Classification)")
                 .stroke(if is_rbf_class { Stroke::new(2.0, Color32::GREEN) } else { Stroke::new(0.5, Color32::LIGHT_GRAY) });
             if ui.add(rbf_class_button).clicked() {
@@ -144,8 +141,7 @@ pub fn update_model_selector_ui(
                 println!("Selected RBF model for classification");
             }
 
-            // SVM button - Ajout du bouton SVM
-            if n_classes == 2 {  // SVM uniquement pour classification binaire
+            if n_classes == 2 {
                 let svm_button = Button::new("SVM (Classification)")
                     .stroke(if is_svm { Stroke::new(2.0, Color32::GREEN) } else { Stroke::new(0.5, Color32::LIGHT_GRAY) });
                 if ui.add(svm_button).clicked() {

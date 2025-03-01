@@ -1,8 +1,9 @@
 use nalgebra::{DMatrix, DVector};
 use std::result::Result;
+use serde::{Serialize, Deserialize};
 
 /// Indicates the problem type: regression or classification.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum TaskType {
     Regression,
     Classification,
@@ -14,6 +15,17 @@ pub struct UniversalDataset {
     pub targets: DVector<f64>,
     pub task: TaskType,
     pub n_classes: Option<usize>, // Only for classification
+}
+
+impl Default for UniversalDataset {
+    fn default() -> Self {
+        Self {
+            inputs: DMatrix::zeros(0, 0),
+            targets: DVector::zeros(0),
+            task: TaskType::Classification,
+            n_classes: None,
+        }
+    }
 }
 
 impl UniversalDataset {
@@ -33,7 +45,6 @@ impl UniversalDataset {
         task: TaskType,
         n_classes: Option<usize>
     ) -> Result<Self, String> {
-        // Validate inputs
         if inputs.is_empty() || targets.is_empty() {
             return Err("Empty dataset".to_string());
         }
@@ -46,7 +57,6 @@ impl UniversalDataset {
             ));
         }
 
-        // Ensure all input vectors have the same length
         let n_features = inputs[0].len();
         for (i, input) in inputs.iter().enumerate() {
             if input.len() != n_features {
@@ -57,7 +67,6 @@ impl UniversalDataset {
             }
         }
 
-        // For classification, validate targets and n_classes
         if task == TaskType::Classification {
             if n_classes.is_none() {
                 return Err("Number of classes must be specified for classification tasks".to_string());
@@ -68,7 +77,6 @@ impl UniversalDataset {
                 return Err("Classification tasks must have at least 2 classes".to_string());
             }
 
-            // Check if all targets are valid class indices
             for (i, &target) in targets.iter().enumerate() {
                 if target < 0.0 || target.fract() != 0.0 || target as usize >= n_classes {
                     return Err(format!(
@@ -79,7 +87,6 @@ impl UniversalDataset {
             }
         }
 
-        // Create matrices
         let n_samples = inputs.len();
         let x_matrix = DMatrix::from_fn(n_samples, n_features, |i, j| inputs[i][j]);
         let y_vector = DVector::from_vec(targets);
@@ -152,7 +159,6 @@ impl UniversalDataset {
             let mean = column.mean();
             let std_dev = (column.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / column.len() as f64).sqrt();
 
-            // Avoid division by zero - if std_dev is too small, skip normalization
             if std_dev > 1e-10 {
                 for i in 0..self.inputs.nrows() {
                     normalized_inputs[(i, j)] = (self.inputs[(i, j)] - mean) / std_dev;

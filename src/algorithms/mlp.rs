@@ -1,9 +1,10 @@
 use crate::data::universal_dataset::TaskType;
 use nalgebra::{DMatrix, DVector};
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 use std::result::Result;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum Activation {
     Tanh,
     Linear,
@@ -16,7 +17,13 @@ impl Activation {
         match self {
             Activation::Tanh => x.tanh(),
             Activation::Linear => x,
-            Activation::ReLU => if x > 0.0 { x } else { 0.0 },
+            Activation::ReLU => {
+                if x > 0.0 {
+                    x
+                } else {
+                    0.0
+                }
+            }
             Activation::Sigmoid => 1.0 / (1.0 + (-x).exp()),
         }
     }
@@ -25,16 +32,22 @@ impl Activation {
         match self {
             Activation::Tanh => 1.0 - x.tanh().powi(2),
             Activation::Linear => 1.0,
-            Activation::ReLU => if x > 0.0 { 1.0 } else { 0.0 },
+            Activation::ReLU => {
+                if x > 0.0 {
+                    1.0
+                } else {
+                    0.0
+                }
+            }
             Activation::Sigmoid => {
                 let sigmoid = 1.0 / (1.0 + (-x).exp());
                 sigmoid * (1.0 - sigmoid)
-            },
+            }
         }
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Layer {
     pub weights: DMatrix<f64>,
     pub biases: DVector<f64>,
@@ -46,13 +59,9 @@ impl Layer {
         let mut rng = rand::thread_rng();
 
         // Remplacer l'initialisation Xavier par un intervalle fixe
-        let weights = DMatrix::from_fn(n_out, n_in, |_, _| {
-            rng.gen_range(-0.1..0.1)
-        });
+        let weights = DMatrix::from_fn(n_out, n_in, |_, _| rng.gen_range(-0.1..0.1));
 
-        let biases = DVector::from_fn(n_out, |_, _| {
-            rng.gen_range(-0.1..0.1)
-        });
+        let biases = DVector::from_fn(n_out, |_, _| rng.gen_range(-0.1..0.1));
 
         Self {
             weights,
@@ -68,7 +77,7 @@ impl Layer {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct MLP {
     pub layers: Vec<Layer>,
 }
@@ -165,7 +174,11 @@ impl MLP {
             if class < output.len() {
                 v[class] = 1.0;
             } else {
-                return Err(format!("Invalid class label: {}. Maximum class is {}", class, output.len() - 1));
+                return Err(format!(
+                    "Invalid class label: {}. Maximum class is {}",
+                    class,
+                    output.len() - 1
+                ));
             }
             v
         } else {
@@ -255,7 +268,12 @@ impl MLP {
         Ok(losses)
     }
 
-    pub fn evaluate(&self, inputs: &DMatrix<f64>, targets: &DMatrix<f64>, task: TaskType) -> Result<f64, String> {
+    pub fn evaluate(
+        &self,
+        inputs: &DMatrix<f64>,
+        targets: &DMatrix<f64>,
+        task: TaskType,
+    ) -> Result<f64, String> {
         if inputs.nrows() == 0 || targets.nrows() == 0 {
             return Err("Empty dataset".to_string());
         }
@@ -281,7 +299,11 @@ impl MLP {
                 if class < output.len() {
                     v[class] = 1.0;
                 } else {
-                    return Err(format!("Invalid class label: {}. Maximum class is {}", class, output.len() - 1));
+                    return Err(format!(
+                        "Invalid class label: {}. Maximum class is {}",
+                        class,
+                        output.len() - 1
+                    ));
                 }
                 v
             } else {
@@ -306,22 +328,11 @@ impl LearningModel for MLP {
         learning_rate: f64,
         n_epochs: usize,
     ) -> Result<Vec<f64>, String> {
-        // By default, assume classification
-        self.fit(
-            x,
-            y,
-            learning_rate,
-            n_epochs,
-            TaskType::Classification,
-        )
+        self.fit(x, y, learning_rate, n_epochs, TaskType::Classification)
     }
 
     fn evaluate(&self, x: &DMatrix<f64>, y: &DMatrix<f64>) -> Result<f64, String> {
-        self.evaluate(
-            x,
-            y,
-            TaskType::Classification,
-        )
+        self.evaluate(x, y, TaskType::Classification)
     }
 
     fn predict(&self, x: &DVector<f64>) -> Result<DVector<f64>, String> {

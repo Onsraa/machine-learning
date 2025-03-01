@@ -8,6 +8,16 @@ pub struct DatasetConverter {
     pub task: TaskType,
 }
 
+impl Default for DatasetConverter {
+    fn default() -> Self {
+        Self {
+            inputs: DMatrix::zeros(0, 0),
+            targets: DVector::zeros(0),
+            task: TaskType::Classification,
+        }
+    }
+}
+
 impl DatasetConverter {
     pub fn to_bevy_points(&self) -> Vec<Point> {
         let mut points = Vec::new();

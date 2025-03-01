@@ -29,11 +29,21 @@ pub enum ModelState {
     Updating,
 }
 
-#[derive(Resource, Default)]
+#[derive(Resource)]
 pub struct DatasetConverter {
     pub inputs: DMatrix<f64>,
     pub outputs: DVector<f64>,
     pub is_classification: bool,
+}
+
+impl Default for DatasetConverter {
+    fn default() -> Self {
+        Self {
+            inputs: DMatrix::zeros(0, 0),
+            outputs: DVector::zeros(0),
+            is_classification: false,
+        }
+    }
 }
 
 impl DatasetConverter {
@@ -63,7 +73,6 @@ impl DatasetConverter {
                         (x, y, z)
                     }
                 }
-                // Cas 3D (régression)
                 _ => {
                     let x = self.inputs[(i, 0)] as f32;
                     let y = self.inputs[(i, 1)] as f32;
@@ -96,14 +105,11 @@ impl DatasetConverter {
 
         for Point(x, y, z, _) in points {
             if is_classification {
-                // Cas classification : (x,y) sont les inputs
                 inputs.push(vec![*x as f64, *y as f64]);
             } else if *z == 0.0 {
-                // Cas régression 2D : x est l'input, y est l'output
                 inputs.push(vec![*x as f64]);
                 outputs.push(*y as f64);
             } else {
-                // Cas régression 3D : (x,y) sont les inputs, z est l'output
                 inputs.push(vec![*x as f64, *y as f64]);
                 outputs.push(*z as f64);
             }
@@ -112,7 +118,7 @@ impl DatasetConverter {
         let n_features = inputs[0].len();
         let x_matrix = DMatrix::from_fn(n_points, n_features, |i, j| inputs[i][j]);
         let y_vector = if is_classification {
-            DVector::from_vec(vec![0.0; n_points]) // Les outputs seront définis plus tard
+            DVector::from_vec(vec![0.0; n_points])
         } else {
             DVector::from_vec(outputs)
         };
@@ -125,7 +131,6 @@ impl DatasetConverter {
     }
 }
 
-// Fonction de mise à jour adaptée
 pub fn update_points(
     mut points: ResMut<Points>,
     mut dataset: ResMut<DatasetConverter>,

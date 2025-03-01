@@ -2,8 +2,9 @@ use crate::algorithms::learning_model::LearningModel;
 use nalgebra::{DMatrix, DVector};
 use rand::Rng;
 use std::result::Result;
+use serde::{Serialize, Deserialize};
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct LinearClassifier {
     pub n_classes: usize,
     pub classifiers: Vec<DVector<f64>>,
@@ -83,7 +84,6 @@ impl LinearClassifier {
             ));
         }
 
-        // Check if any label is >= n_classes
         if let Some(&invalid_label) = y.iter().find(|&&label| label >= self.n_classes) {
             return Err(format!(
                 "Invalid label: {}. Maximum allowed is {}",
@@ -101,7 +101,6 @@ impl LinearClassifier {
                 let x_i = x.row(i);
                 let x_vec = x_i.transpose();
 
-                // Forward pass - compute activations
                 let mut outputs = Vec::with_capacity(self.n_classes);
                 for j in 0..self.n_classes {
                     let activation = self.classifiers[j].dot(&x_vec) + self.biases[j];
@@ -111,7 +110,6 @@ impl LinearClassifier {
                 let true_class = y[i];
                 let mut class_loss = 0.0;
 
-                // Compute loss
                 for (j, output) in outputs.iter().enumerate() {
                     let target = if j == true_class { 1.0 } else { -1.0 };
                     let error = output - target;
@@ -119,12 +117,10 @@ impl LinearClassifier {
                 }
                 total_loss += class_loss;
 
-                // Backward pass - update weights
                 for j in 0..self.n_classes {
                     let target = if j == true_class { 1.0 } else { -1.0 };
                     let output = outputs[j];
 
-                    // Gradient including tanh derivative (1 - tanh^2)
                     let grad = (output - target) * (1.0 - output * output);
                     self.classifiers[j] -= learning_rate * grad * &x_vec;
                     self.biases[j] -= learning_rate * grad;
@@ -148,7 +144,6 @@ impl LinearClassifier {
             ));
         }
 
-        // Check if any label is >= n_classes
         if let Some(&invalid_label) = y.iter().find(|&&label| label >= self.n_classes) {
             return Err(format!(
                 "Invalid label: {}. Maximum allowed is {}",

@@ -6,7 +6,6 @@ pub fn training_ui_system(mut contexts: EguiContexts, mut training_state: ResMut
     egui::Window::new("Training Control").show(contexts.ctx_mut(), |ui| {
         ui.add_space(5.0);
 
-        // Training control buttons
         ui.horizontal(|ui| {
             if training_state.is_training {
                 if ui.button("Stop Training").clicked() {
@@ -33,49 +32,60 @@ pub fn training_ui_system(mut contexts: EguiContexts, mut training_state: ResMut
 
         ui.heading("Hyperparameters");
 
-        // Learning Rate slider with logarithmic scale for better control
         ui.horizontal(|ui| {
             ui.label("Learning Rate:");
-            ui.add(egui::Slider::new(&mut training_state.hyperparameters.learning_rate, 0.00001..=1.0)
+            ui.add(
+                egui::Slider::new(
+                    &mut training_state.hyperparameters.learning_rate,
+                    0.00001..=1.0,
+                )
                 .logarithmic(true)
-                .text("learning rate"));
+                .text("learning rate"),
+            );
         });
-        ui.label(format!("Current Value: {:.6}", training_state.hyperparameters.learning_rate));
+        ui.label(format!(
+            "Current Value: {:.6}",
+            training_state.hyperparameters.learning_rate
+        ));
         ui.add_space(5.0);
 
-        // Train Ratio slider
         ui.horizontal(|ui| {
             ui.label("Train Ratio:");
-            ui.add(egui::Slider::new(&mut training_state.hyperparameters.train_ratio, 0.1..=1.0)
-                .text("train ratio"));
+            ui.add(
+                egui::Slider::new(&mut training_state.hyperparameters.train_ratio, 0.1..=1.0)
+                    .text("train ratio"),
+            );
         });
         ui.add_space(5.0);
 
-        // Batch Size input
         ui.horizontal(|ui| {
             ui.label("Batch Size:");
-            ui.add(egui::DragValue::new(&mut training_state.hyperparameters.batch_size)
-                .range(1..=1024));
+            ui.add(
+                egui::DragValue::new(&mut training_state.hyperparameters.batch_size)
+                    .range(1..=1024),
+            );
         });
         ui.add_space(5.0);
 
-        // Epoch Interval slider
         ui.horizontal(|ui| {
             ui.label("Epoch Interval (s):");
-            ui.add(egui::Slider::new(&mut training_state.hyperparameters.epoch_interval, 0.01..=1.0)
-                .logarithmic(true));
+            ui.add(
+                egui::Slider::new(
+                    &mut training_state.hyperparameters.epoch_interval,
+                    0.01..=1.0,
+                )
+                .logarithmic(true),
+            );
         });
 
         ui.add_space(5.0);
         ui.separator();
         ui.add_space(5.0);
 
-        // Training metrics section
         ui.heading("Training Metrics");
         if !training_state.metrics.training_losses.is_empty() {
             ui.label(format!("Epoch: {}", training_state.metrics.current_epoch));
 
-            // Get last values with safe unwrapping
             if let Some(last_train) = training_state.metrics.training_losses.back() {
                 ui.label(format!("Training Loss: {:.6}", last_train));
             }
@@ -84,25 +94,27 @@ pub fn training_ui_system(mut contexts: EguiContexts, mut training_state: ResMut
                 ui.label(format!("Test Loss: {:.6}", last_test));
             }
 
-            // Early stopping metric
-            if training_state.metrics.training_losses.len() > 1 && training_state.metrics.test_losses.len() > 1 {
+            if training_state.metrics.training_losses.len() > 1
+                && training_state.metrics.test_losses.len() > 1
+            {
                 let test_losses: Vec<_> = training_state.metrics.test_losses.iter().collect();
                 let min_test_loss = test_losses.iter().fold(f64::INFINITY, |a, &b| a.min(*b));
                 let last_test_loss = *test_losses.last().unwrap_or(&&0.0);
 
                 ui.label(format!("Best Test Loss: {:.6}", min_test_loss));
 
-                // Display improvement indicator
                 if last_test_loss <= &(min_test_loss + 1e-6) {
                     ui.colored_label(egui::Color32::GREEN, "✓ Model is still improving");
                 } else {
-                    let epochs_since_best = test_losses.iter().rev()
+                    let epochs_since_best = test_losses
+                        .iter()
+                        .rev()
                         .position(|&loss| (loss - min_test_loss).abs() < 1e-6)
                         .unwrap_or(0);
 
                     ui.colored_label(
                         egui::Color32::YELLOW,
-                        format!("⚠ No improvement for {} epochs", epochs_since_best)
+                        format!("⚠ No improvement for {} epochs", epochs_since_best),
                     );
                 }
             }
@@ -110,7 +122,6 @@ pub fn training_ui_system(mut contexts: EguiContexts, mut training_state: ResMut
             ui.label("No training data available yet");
         }
 
-        // Plot losses
         plot_losses_with_legend(ui, &training_state.metrics);
     });
 }
@@ -143,11 +154,15 @@ fn plot_losses_with_legend(ui: &mut egui::Ui, metrics: &TrainingMetrics) {
         .allow_zoom(true)
         .allow_drag(true)
         .show(ui, |plot_ui| {
-            plot_ui.line(Line::new(train_points)
-                .name("Training Loss")
-                .color(egui::Color32::BLUE));
-            plot_ui.line(Line::new(test_points)
-                .name("Test Loss")
-                .color(egui::Color32::RED));
+            plot_ui.line(
+                Line::new(train_points)
+                    .name("Training Loss")
+                    .color(egui::Color32::BLUE),
+            );
+            plot_ui.line(
+                Line::new(test_points)
+                    .name("Test Loss")
+                    .color(egui::Color32::RED),
+            );
         });
 }

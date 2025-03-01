@@ -1,9 +1,10 @@
 use crate::algorithms::learning_model::LearningModel;
 use nalgebra::{DMatrix, DVector};
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 use std::result::Result;
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct LinearRegression {
     pub weights: DVector<f64>,
     pub bias: f64,

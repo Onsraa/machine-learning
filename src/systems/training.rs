@@ -50,7 +50,6 @@ pub fn training_system(
     let learning_rate = training_state.hyperparameters.learning_rate;
     let batch_size = training_state.hyperparameters.batch_size;
     let train_ratio = training_state.hyperparameters.train_ratio;
-    let early_stopping_patience = training_state.hyperparameters.early_stopping_patience;
 
     // Initialisation du modèle si nécessaire
     if training_state.selected_model.is_none() {
@@ -85,9 +84,7 @@ pub fn training_system(
         normalize_data(&dataset.inputs)
     };
 
-    // *** GESTION DU TRAIN_RATIO, Y COMPRIS LE CAS 1.0 ***
     let (batch_inputs, batch_targets, test_inputs, test_targets) = if train_ratio >= 0.999 {
-        // CAS SPÉCIAL: Utilisation de tous les échantillons pour l'entraînement ET l'évaluation
         println!("Using all {} samples for both training and evaluation (train_ratio=1.0)", n_samples);
 
         // Pour le batch, prendre soit tous les échantillons, soit un sous-ensemble selon le batch_size
@@ -219,16 +216,7 @@ pub fn training_system(
                                          i, pred[0], test_targets[(i, 0)]);
                             }
                         }
-
-                        // Suppression des erreurs précédentes
                         training_state.error_message = None;
-
-                        // Vérification de l'early stopping
-                        // if training_state.metrics.should_stop_early(early_stopping_patience) {
-                        //     println!("Early stopping triggered - no improvement for {} epochs",
-                        //              early_stopping_patience);
-                        //     training_state.is_training = false;
-                        // }
                     },
                     Err(e) => {
                         training_state.error_message = Some(format!("Error evaluating model: {}", e));
@@ -291,7 +279,6 @@ fn select_elements(vector: &DVector<f64>, indices: &[usize]) -> DMatrix<f64> {
     DMatrix::from_column_slice(indices.len(), 1, &data)
 }
 
-// Fonction utilitaire pour min
 fn min(a: usize, b: usize) -> usize {
     if a < b { a } else { b }
 }

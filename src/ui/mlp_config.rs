@@ -12,23 +12,19 @@ pub fn mlp_config_ui(
     mut mlp_config: ResMut<MLPConfig>,
     data_model: Res<DataModel>,
 ) {
-    // Only display the panel if the selected model is an MLP
     if let Some(ref model) = training_state.selected_model {
-        // Check if this is an MLP model
         let is_mlp = match model {
             ModelAlgorithm::MLP(_, _) => true,
             _ => false,
         };
 
         if is_mlp {
-            // Determine if it's a classification or regression model
             let is_classification = model.is_classification();
 
             egui::Window::new("MLP Configuration").show(contexts.ctx_mut(), |ui| {
                 ui.heading("Hidden Layer Configuration");
                 ui.separator();
 
-                // Model type indicator
                 ui.horizontal(|ui| {
                     ui.label("Model type:");
                     ui.colored_label(
@@ -38,7 +34,6 @@ pub fn mlp_config_ui(
                 });
                 ui.separator();
 
-                // Number of hidden layers
                 ui.label("Number of hidden layers:");
                 let mut count = mlp_config.hidden_layers.len() as u32;
                 if ui.add(egui::DragValue::new(&mut count).speed(1).range(0..=10)).changed() {
@@ -58,7 +53,6 @@ pub fn mlp_config_ui(
                 }
                 ui.separator();
 
-                // For each layer, display number of neurons
                 for (i, neurons) in mlp_config.hidden_layers.iter_mut().enumerate() {
                     ui.horizontal(|ui| {
                         ui.label(format!("Layer {} - Number of neurons:", i + 1));
@@ -70,11 +64,9 @@ pub fn mlp_config_ui(
                     });
                 }
 
-                // Activation functions
                 ui.separator();
                 ui.heading("Activation Functions");
 
-                // Let user select hidden layer activation
                 let activation_options = ["Tanh", "ReLU", "Sigmoid", "Linear"];
                 let activation_values = [Activation::Tanh, Activation::ReLU, Activation::Sigmoid, Activation::Linear];
 
@@ -120,16 +112,10 @@ pub fn mlp_config_ui(
                 }));
                 mlp_config.output_activation = output_activation;
 
-                // Add button to apply configuration
                 ui.separator();
                 if ui.button("Apply Configuration").clicked() {
-                    // Determine appropriate activations
                     let mut activations = vec![mlp_config.hidden_activations[0]; mlp_config.hidden_layers.len()];
-
-                    // Add appropriate output activation
                     activations.push(mlp_config.output_activation);
-
-                    // Create new MLP with updated configuration
                     match MLP::new(
                         data_model.input_dim(),
                         mlp_config.hidden_layers.clone(),

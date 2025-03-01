@@ -1,5 +1,5 @@
-use bevy::prelude::*;
 use crate::algorithms::mlp::Activation;
+use bevy::prelude::*;
 
 #[derive(Resource)]
 pub struct MLPConfig {
@@ -39,19 +39,17 @@ impl MLPConfig {
 
     /// Gets all activations for creating an MLP
     pub fn get_all_activations(&self) -> Vec<Activation> {
-        // Ensure we have enough activations for all hidden layers
         let mut activations = Vec::with_capacity(self.hidden_layers.len() + 1);
 
-        // Add hidden layer activations, recycling if needed
         for i in 0..self.hidden_layers.len() {
             activations.push(
-                self.hidden_activations.get(i % self.hidden_activations.len())
+                self.hidden_activations
+                    .get(i % self.hidden_activations.len())
                     .copied()
-                    .unwrap_or(Activation::Tanh)
+                    .unwrap_or(Activation::Tanh),
             );
         }
 
-        // Add output activation
         activations.push(self.output_activation);
 
         activations
