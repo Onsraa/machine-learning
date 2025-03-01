@@ -1,17 +1,17 @@
 use crate::algorithms::model_selector::ModelAlgorithm;
 use crate::data::universal_dataset::TaskType;
 use bevy::prelude::*;
-use chrono::{DateTime, Local};
-use ron::de::from_str;
+use chrono::Local;
 use ron::ser::{to_string_pretty, PrettyConfig};
 use serde::{Deserialize, Serialize};
 use std::fs::{self, create_dir_all, File};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
-#[derive(Resource, Default)]
+#[derive(Resource)]
 pub struct ModelManager {
-    pub save_directory: PathBuf,
+    pub base_directory: PathBuf,                  // Dossier principal de sauvegarde
+    pub save_directory: PathBuf,                  // Dossier actif pour les sauvegardes
     pub model_infos: Vec<ModelSaveInfo>,
     pub selected_model_index: Option<usize>,
     pub save_dialog_open: bool,
@@ -22,6 +22,24 @@ pub struct ModelManager {
     pub confirm_delete_dialog_open: bool,
     pub model_to_delete: Option<usize>,
 }
+
+impl Default for ModelManager {
+    fn default() -> Self {
+        Self {
+            base_directory: "saved_models".parse().unwrap(),
+            save_directory: Default::default(),
+            model_infos: vec![],
+            selected_model_index: None,
+            save_dialog_open: false,
+            load_dialog_open: false,
+            dialog_model_name: "".to_string(),
+            dialog_description: "".to_string(),
+            status_message: None,
+            confirm_delete_dialog_open: false,
+            model_to_delete: None,
+        }
+    }
+} 
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct ModelSaveInfo {
@@ -34,19 +52,33 @@ pub struct ModelSaveInfo {
     pub created_at: String,
     pub description: Option<String>,
     pub file_path: String,
+    pub category: String,                        // Nouvelle propriété pour distinguer la catégorie
 }
 
 impl ModelManager {
     pub fn new() -> Self {
-        let save_dir = PathBuf::from("saved_models");
-        if !save_dir.exists() {
-            if let Err(e) = create_dir_all(&save_dir) {
-                eprintln!("Failed to create save directory: {}", e);
+        let base_dir = PathBuf::from("saved_models");
+
+        // Créer les sous-répertoires
+        let cas_tests_dir = base_dir.join("cas_de_tests");
+        let images_jeux_dir = base_dir.join("images_jeux");
+
+        for dir in &[&base_dir, &cas_tests_dir, &images_jeux_dir] {
+            if !dir.exists() {
+                if let Err(e) = create_dir_all(dir) {
+                    eprintln!("Erreur lors de la création du répertoire {}: {}", dir.display(), e);
+                }
             }
         }
-        let model_infos = Self::load_model_infos(&save_dir);
+
+        // Charger tous les modèles des deux répertoires
+        let mut model_infos = Vec::new();
+        model_infos.extend(Self::load_model_infos_from_dir(&cas_tests_dir, "cas_de_tests"));
+        model_infos.extend(Self::load_model_infos_from_dir(&images_jeux_dir, "images_jeux"));
+
         Self {
-            save_directory: save_dir,
+            base_directory: base_dir.clone(),
+            save_directory: base_dir,
             model_infos,
             selected_model_index: None,
             save_dialog_open: false,
@@ -59,17 +91,20 @@ impl ModelManager {
         }
     }
 
-    fn load_model_infos(save_dir: &Path) -> Vec<ModelSaveInfo> {
+    // Charge les informations des modèles d'un répertoire spécifique
+    fn load_model_infos_from_dir(dir: &Path, category: &str) -> Vec<ModelSaveInfo> {
         let mut infos = Vec::new();
 
-        if let Ok(entries) = fs::read_dir(save_dir) {
+        if let Ok(entries) = fs::read_dir(dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
                 if path.extension().map_or(false, |ext| ext == "info") {
                     if let Ok(mut file) = File::open(&path) {
                         let mut contents = String::new();
                         if file.read_to_string(&mut contents).is_ok() {
-                            if let Ok(info) = from_str::<ModelSaveInfo>(&contents) {
+                            if let Ok(mut info) = ron::from_str::<ModelSaveInfo>(&contents) {
+                                // Mettre à jour la catégorie
+                                info.category = category.to_string();
                                 infos.push(info);
                             }
                         }
@@ -81,12 +116,28 @@ impl ModelManager {
         infos
     }
 
-    pub fn save_model(
+    // Définit le dossier de sauvegarde en fonction de la catégorie
+    pub fn set_save_category(&mut self, category: &str) {
+        self.save_directory = self.base_directory.join(category);
+
+        if !self.save_directory.exists() {
+            if let Err(e) = create_dir_all(&self.save_directory) {
+                eprintln!("Erreur lors de la création du répertoire {}: {}", self.save_directory.display(), e);
+            }
+        }
+    }
+
+    // Sauvegarde un modèle dans le dossier actif avec une catégorie spécifiée
+    pub fn save_model_with_category(
         &mut self,
         model: &ModelAlgorithm,
         name: &str,
         description: Option<String>,
+        category: &str,
     ) -> Result<(), String> {
+        // Définir le dossier de sauvegarde
+        self.set_save_category(category);
+
         let model_type = match model {
             ModelAlgorithm::LinearRegression(_, _) => "LinearRegression",
             ModelAlgorithm::LinearClassifier(_, _) => "LinearClassifier",
@@ -107,20 +158,18 @@ impl ModelManager {
             Local::now().format("%Y%m%d_%H%M%S")
         );
 
-        let model_file_path = self
-            .save_directory
-            .join(format!("{}.model", base_file_name));
+        let model_file_path = self.save_directory.join(format!("{}.model", base_file_name));
         let info_file_path = self.save_directory.join(format!("{}.info", base_file_name));
 
         let model_data = match ron::to_string(model) {
             Ok(data) => data,
-            Err(e) => return Err(format!("Failed to serialize model: {}", e)),
+            Err(e) => return Err(format!("Erreur lors de la sérialisation du modèle: {}", e)),
         };
 
         if let Err(e) = File::create(&model_file_path)
             .and_then(|mut file| file.write_all(model_data.as_bytes()))
         {
-            return Err(format!("Failed to save model file: {}", e));
+            return Err(format!("Erreur lors de la sauvegarde du fichier modèle: {}", e));
         }
 
         let info = ModelSaveInfo {
@@ -163,58 +212,69 @@ impl ModelManager {
             created_at: Local::now().to_rfc3339(),
             description,
             file_path: model_file_path.to_string_lossy().to_string(),
+            category: category.to_string(),
         };
 
         let pretty_config = PrettyConfig::default();
 
         let info_data = match to_string_pretty(&info, pretty_config) {
             Ok(data) => data,
-            Err(e) => return Err(format!("Failed to serialize model info: {}", e)),
+            Err(e) => return Err(format!("Erreur lors de la sérialisation des informations du modèle: {}", e)),
         };
 
-        if let Err(e) =
-            File::create(&info_file_path).and_then(|mut file| file.write_all(info_data.as_bytes()))
+        if let Err(e) = File::create(&info_file_path)
+            .and_then(|mut file| file.write_all(info_data.as_bytes()))
         {
-            return Err(format!("Failed to save model info file: {}", e));
+            return Err(format!("Erreur lors de la sauvegarde du fichier d'informations: {}", e));
         }
 
         self.model_infos.push(info);
-        self.set_status(format!("Model {} saved successfully", name), 3.0);
+        self.set_status(format!("Modèle {} sauvegardé avec succès", name), 3.0);
 
         Ok(())
     }
 
+    // Méthode de compatibilité qui appelle save_model_with_category avec la catégorie "cas_de_tests"
+    pub fn save_model(
+        &mut self,
+        model: &ModelAlgorithm,
+        name: &str,
+        description: Option<String>,
+    ) -> Result<(), String> {
+        self.save_model_with_category(model, name, description, "cas_de_tests")
+    }
+
     pub fn load_model(&self, index: usize) -> Result<ModelAlgorithm, String> {
         if index >= self.model_infos.len() {
-            return Err("Invalid model index".to_string());
+            return Err("Index de modèle invalide".to_string());
         }
 
         let info = &self.model_infos[index];
         let path = Path::new(&info.file_path);
 
         if !path.exists() {
-            return Err(format!("Model file not found: {}", path.display()));
+            return Err(format!("Fichier modèle non trouvé: {}", path.display()));
         }
 
         let mut file = match File::open(path) {
             Ok(file) => file,
-            Err(e) => return Err(format!("Failed to open model file: {}", e)),
+            Err(e) => return Err(format!("Erreur lors de l'ouverture du fichier modèle: {}", e)),
         };
 
         let mut buffer = String::new();
         if let Err(e) = file.read_to_string(&mut buffer) {
-            return Err(format!("Failed to read model file: {}", e));
+            return Err(format!("Erreur lors de la lecture du fichier modèle: {}", e));
         }
 
         match ron::from_str::<ModelAlgorithm>(&buffer) {
             Ok(model) => Ok(model),
-            Err(e) => Err(format!("Failed to deserialize model: {}", e)),
+            Err(e) => Err(format!("Erreur lors de la désérialisation du modèle: {}", e)),
         }
     }
 
     pub fn delete_model(&mut self, index: usize) -> Result<(), String> {
         if index >= self.model_infos.len() {
-            return Err("Invalid model index".to_string());
+            return Err("Index de modèle invalide".to_string());
         }
 
         let info = &self.model_infos[index];
@@ -224,13 +284,13 @@ impl ModelManager {
         // Supprimer les fichiers
         if model_path.exists() {
             if let Err(e) = fs::remove_file(model_path) {
-                return Err(format!("Failed to delete model file: {}", e));
+                return Err(format!("Erreur lors de la suppression du fichier modèle: {}", e));
             }
         }
 
         if info_path.exists() {
             if let Err(e) = fs::remove_file(info_path) {
-                return Err(format!("Failed to delete info file: {}", e));
+                return Err(format!("Erreur lors de la suppression du fichier d'informations: {}", e));
             }
         }
 
@@ -245,7 +305,7 @@ impl ModelManager {
             }
         }
 
-        self.set_status(format!("Model {} deleted", model_name), 3.0);
+        self.set_status(format!("Modèle {} supprimé", model_name), 3.0);
 
         Ok(())
     }
@@ -261,7 +321,7 @@ impl ModelManager {
             self.confirm_delete_dialog_open = false;
             result
         } else {
-            Err("No model selected for deletion".to_string())
+            Err("Aucun modèle sélectionné pour suppression".to_string())
         }
     }
 
@@ -281,5 +341,17 @@ impl ModelManager {
                 self.status_message = None;
             }
         }
+    }
+
+    // Recharge tous les modèles des deux répertoires
+    pub fn refresh(&mut self) {
+        let cas_tests_dir = self.base_directory.join("cas_de_tests");
+        let images_jeux_dir = self.base_directory.join("images_jeux");
+
+        self.model_infos.clear();
+        self.model_infos.extend(Self::load_model_infos_from_dir(&cas_tests_dir, "cas_de_tests"));
+        self.model_infos.extend(Self::load_model_infos_from_dir(&images_jeux_dir, "images_jeux"));
+
+        self.selected_model_index = None;
     }
 }

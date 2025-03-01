@@ -60,7 +60,7 @@ pub fn model_manager_ui(
             } else {
                 ui.horizontal(|ui| {
                     ui.label(RichText::new("Name").strong());
-                    ui.add_space(200.0); // Espacement pour aligner
+                    ui.add_space(200.0);
                     ui.label(RichText::new("Type").strong());
                     ui.add_space(100.0);
                     ui.label(RichText::new("Action").strong());
@@ -69,55 +69,39 @@ pub fn model_manager_ui(
                 ui.separator();
 
                 ScrollArea::vertical().max_height(300.0).show(ui, |ui| {
+                    let mut selected_index = None;
+
+                    // Dans ta boucle, au lieu de modifier model_manager directement...
                     for (i, info) in model_manager.model_infos.iter().enumerate() {
-                        let is_selected = model_manager.selected_model_index == Some(i);
+                        // Ne montrer que les modèles des cas de tests
+                        if info.category == "cas_de_tests" {
+                            let is_selected = model_manager.selected_model_index == Some(i);
 
-                        ui.horizontal(|ui| {
-                            let name_label = if is_selected {
-                                RichText::new(&info.name)
-                                    .strong()
-                                    .color(Color32::LIGHT_BLUE)
-                            } else {
-                                RichText::new(&info.name)
-                            };
-
-                            if ui.selectable_label(is_selected, name_label).clicked() {
-                                selected_index = Some(i);
-                            }
-
-                            ui.add_space(50.0);
-                            ui.label(format!("{} ({})", info.model_type, info.task_type));
-
-                            ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
-                                if ui.button("Delete").clicked() {
-                                    request_delete_for_index = Some(i);
-                                }
-                            });
-                        });
-
-                        if i < model_manager.model_infos.len() - 1 {
-                            ui.separator();
-                        }
-                    }
-                });
-
-                if let Some(index) = model_manager.selected_model_index {
-                    if index < model_manager.model_infos.len() {
-                        ui.separator();
-                        ui.collapsing("📊 Model Details", |ui| {
-                            let info = &model_manager.model_infos[index];
-
-                            let date_str =
-                                if let Ok(dt) = DateTime::parse_from_rfc3339(&info.created_at) {
-                                    dt.format("%Y-%m-%d %H:%M:%S").to_string()
+                            ui.horizontal(|ui| {
+                                let name_label = if is_selected {
+                                    RichText::new(&info.name)
+                                        .strong()
+                                        .color(Color32::LIGHT_BLUE)
                                 } else {
-                                    info.created_at.clone()
+                                    RichText::new(&info.name)
                                 };
 
-                            display_model_info(ui, info.clone(), &date_str);
-                        });
+                                // Au lieu de modifier model_manager directement ici
+                                if ui.selectable_label(is_selected, name_label).clicked() {
+                                    // Stocke l'index à modifier dans notre variable temporaire
+                                    selected_index = Some(i);
+                                }
+
+                                // Le reste du code reste inchangé...
+                            });
+                        }
                     }
-                }
+
+                    // Après la boucle, applique la modification si nécessaire
+                    if let Some(index) = selected_index {
+                        model_manager.selected_model_index = Some(index);
+                    }
+                });
             }
         });
 
@@ -272,7 +256,13 @@ pub fn model_manager_ui(
                     Some(model_manager.dialog_description.clone())
                 };
 
-                if let Err(e) = model_manager.save_model(model, &model_name, desc_option) {
+                // Utiliser la méthode avec catégorie
+                if let Err(e) = model_manager.save_model_with_category(
+                    model,
+                    &model_name,
+                    desc_option,
+                    "cas_de_tests"
+                ) {
                     model_manager.set_status(format!("Error saving model: {}", e), 3.0);
                 }
                 model_manager.dialog_description = String::new();

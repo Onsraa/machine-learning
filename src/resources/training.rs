@@ -11,6 +11,7 @@ pub struct TrainingState {
     pub selected_model: Option<ModelAlgorithm>,
     pub last_update: f32,
     pub error_message: Option<String>,
+    pub index_cache: Option<(Vec<usize>, Vec<usize>)>,
 }
 
 pub struct Hyperparameters {
@@ -43,6 +44,7 @@ impl Default for TrainingState {
             selected_model: None,
             last_update: 0.0,
             error_message: None,
+            index_cache: None,
         }
     }
 }

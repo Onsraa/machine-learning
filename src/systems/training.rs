@@ -5,6 +5,7 @@ use bevy::prelude::*;
 use nalgebra::{DMatrix, DVector};
 use rand::seq::SliceRandom;
 use std::time::Instant;
+use crate::data::image_processing::{ImageDataset, ImagePreprocessor};
 
 pub fn training_system(
     mut training_state: ResMut<TrainingState>,
@@ -281,4 +282,39 @@ fn select_elements(vector: &DVector<f64>, indices: &[usize]) -> DMatrix<f64> {
 
 fn min(a: usize, b: usize) -> usize {
     if a < b { a } else { b }
+}
+
+fn train_on_image_dataset(
+    training_state: &mut TrainingState,
+    dataset: &ImageDataset,
+    train_ratio: f64,
+    batch_size: usize,
+    learning_rate: f64
+) -> Result<(), String> {
+    // Diviser le dataset en ensembles d'entraînement et de test
+    let (train_indices, test_indices) = ImagePreprocessor::split_dataset(dataset, train_ratio);
+
+    // Préparer les batchs pour l'entraînement
+    let mut rng = rand::thread_rng();
+    let batch_indices: Vec<usize> = train_indices
+        .choose_multiple(&mut rng, batch_size.min(train_indices.len()))
+        .cloned()
+        .collect();
+
+    // Convertir les données
+    let (batch_inputs, batch_targets) = ImagePreprocessor::dataset_to_matrices(dataset, &batch_indices);
+    let (test_inputs, test_targets) = ImagePreprocessor::dataset_to_matrices(dataset, &test_indices);
+
+    // Entraîner sur ce batch
+    if let Some(ref mut model) = training_state.selected_model {
+        let train_loss = model.fit(&batch_inputs, &batch_targets, learning_rate, 1)?;
+        let test_loss = model.evaluate(&test_inputs, &test_targets)?;
+
+        // Mettre à jour les métriques
+        training_state.metrics.add_metrics(train_loss, test_loss);
+
+        Ok(())
+    } else {
+        Err("Aucun modèle sélectionné".to_string())
+    }
 }
