@@ -1,0 +1,11 @@
+(
+    name: "BEST - MLP - Multi Linear 3 Classes",
+    model_type: "MLP",
+    task_type: "Classification",
+    input_dim: 2,
+    output_dim: 3,
+    accuracy: None,
+    created_at: "2025-03-01T14:47:13.916138+01:00",
+    description: None,
+    file_path: "saved_models/BEST_-_MLP_-_Multi_Linear_3_Classes_MLP_20250301_144713.model",
+)
