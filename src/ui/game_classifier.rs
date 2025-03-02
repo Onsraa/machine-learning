@@ -500,7 +500,6 @@ pub fn game_classifier_ui(
             Ok(dataset) => {
                 println!("Dataset chargé avec {} images", dataset.data.len());
 
-                // Update the number of classes in the MLP configuration
                 mlp_config.output_size = dataset.category_mapping.len();
 
                 game_state.dataset = Some(Arc::new(dataset));
@@ -570,7 +569,6 @@ pub fn game_classifier_ui(
                     Ok(mlp) => {
                         training_state.selected_model = Some(ModelAlgorithm::new_mlp(mlp, true));
 
-                        // Réinitialiser les métriques seulement pour un nouveau modèle
                         training_state.metrics.reset();
                         game_state.loss_history.clear();
                         game_state.train_epochs = 0;
@@ -581,16 +579,14 @@ pub fn game_classifier_ui(
                     }
                     Err(e) => {
                         game_state.train_message = format!("Error creating MLP: {}", e);
-                        start_training = false; // Annuler le démarrage
+                        start_training = false;
                     }
                 }
             } else {
-                // Si on a déjà un modèle, on reprend l'entraînement avec celui-ci
                 println!("Resuming training with existing model");
             }
 
             if start_training {
-                // Configure training hyperparameters (toujours mettre à jour)
                 training_state.hyperparameters.learning_rate = mlp_config.learning_rate;
                 training_state.hyperparameters.batch_size = mlp_config.batch_size;
                 training_state.hyperparameters.train_ratio = mlp_config.train_ratio;
