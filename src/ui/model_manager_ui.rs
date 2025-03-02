@@ -1,9 +1,8 @@
-use crate::resources::model_managers::{ModelManager, ModelSaveInfo};
+use crate::resources::model_managers::{ModelManager};
 use crate::resources::training::TrainingState;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
-use chrono::DateTime;
-use egui::{Color32, RichText, ScrollArea, Ui};
+use egui::{Color32, RichText, ScrollArea};
 
 pub fn model_manager_ui(
     mut contexts: EguiContexts,
@@ -60,7 +59,7 @@ pub fn model_manager_ui(
             } else {
                 ui.horizontal(|ui| {
                     ui.label(RichText::new("Name").strong());
-                    ui.add_space(200.0); // Espacement pour aligner
+                    ui.add_space(200.0);
                     ui.label(RichText::new("Type").strong());
                     ui.add_space(100.0);
                     ui.label(RichText::new("Action").strong());
@@ -69,55 +68,50 @@ pub fn model_manager_ui(
                 ui.separator();
 
                 ScrollArea::vertical().max_height(300.0).show(ui, |ui| {
+                    let mut selected_index_temp = None;
+                    let mut delete_index = None;
+
                     for (i, info) in model_manager.model_infos.iter().enumerate() {
-                        let is_selected = model_manager.selected_model_index == Some(i);
+                        if info.category == "cas_de_tests" {
+                            let is_selected = model_manager.selected_model_index == Some(i);
 
-                        ui.horizontal(|ui| {
-                            let name_label = if is_selected {
-                                RichText::new(&info.name)
-                                    .strong()
-                                    .color(Color32::LIGHT_BLUE)
-                            } else {
-                                RichText::new(&info.name)
-                            };
-
-                            if ui.selectable_label(is_selected, name_label).clicked() {
-                                selected_index = Some(i);
-                            }
-
-                            ui.add_space(50.0);
-                            ui.label(format!("{} ({})", info.model_type, info.task_type));
-
-                            ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
-                                if ui.button("Delete").clicked() {
-                                    request_delete_for_index = Some(i);
-                                }
-                            });
-                        });
-
-                        if i < model_manager.model_infos.len() - 1 {
-                            ui.separator();
-                        }
-                    }
-                });
-
-                if let Some(index) = model_manager.selected_model_index {
-                    if index < model_manager.model_infos.len() {
-                        ui.separator();
-                        ui.collapsing("📊 Model Details", |ui| {
-                            let info = &model_manager.model_infos[index];
-
-                            let date_str =
-                                if let Ok(dt) = DateTime::parse_from_rfc3339(&info.created_at) {
-                                    dt.format("%Y-%m-%d %H:%M:%S").to_string()
+                            ui.horizontal(|ui| {
+                                let name_label = if is_selected {
+                                    RichText::new(&info.name)
+                                        .strong()
+                                        .color(Color32::LIGHT_BLUE)
                                 } else {
-                                    info.created_at.clone()
+                                    RichText::new(&info.name)
                                 };
 
-                            display_model_info(ui, info.clone(), &date_str);
-                        });
+                                if ui.selectable_label(is_selected, name_label).clicked() {
+                                    selected_index_temp = Some(i);
+                                }
+
+                                ui.add_space(50.0);
+                                ui.label(format!("{} ({})", info.model_type, info.task_type));
+
+                                ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
+                                    if ui.button("Delete").clicked() {
+                                        delete_index = Some(i);
+                                    }
+                                });
+                            });
+
+                            if i < model_manager.model_infos.len() - 1 {
+                                ui.separator();
+                            }
+                        }
                     }
-                }
+
+                    if let Some(index) = selected_index_temp {
+                        selected_index = Some(index);
+                    }
+
+                    if let Some(index) = delete_index {
+                        request_delete_for_index = Some(index);
+                    }
+                });
             }
         });
 
@@ -160,6 +154,9 @@ pub fn model_manager_ui(
                                             if let Err(e) = model_manager.confirm_delete() {
                                                 model_manager
                                                     .set_status(format!("Error: {}", e), 3.0);
+                                                println!("Erreur lors de la suppression: {}", e);
+                                            } else {
+                                                println!("Modèle supprimé avec succès!");
                                             }
                                         }
                                     },
@@ -168,7 +165,6 @@ pub fn model_manager_ui(
                         });
                     });
             } else {
-                // Index invalide
                 model_manager.cancel_delete();
             }
         }
@@ -208,7 +204,6 @@ pub fn model_manager_ui(
         model_manager.dialog_model_name = "My Model".to_string();
     }
 
-    // Boîte de dialogue pour sauvegarder un modèle
     if model_manager.save_dialog_open {
         let mut save_model = false;
         let mut cancel_save = false;
@@ -272,7 +267,12 @@ pub fn model_manager_ui(
                     Some(model_manager.dialog_description.clone())
                 };
 
-                if let Err(e) = model_manager.save_model(model, &model_name, desc_option) {
+                if let Err(e) = model_manager.save_model_with_category(
+                    model,
+                    &model_name,
+                    desc_option,
+                    "cas_de_tests"
+                ) {
                     model_manager.set_status(format!("Error saving model: {}", e), 3.0);
                 }
                 model_manager.dialog_description = String::new();
@@ -285,59 +285,4 @@ pub fn model_manager_ui(
             model_manager.dialog_description = String::new();
         }
     }
-}
-
-fn display_model_info(ui: &mut Ui, info: ModelSaveInfo, date_str: &str) {
-    egui::Grid::new("model_details_grid")
-        .num_columns(2)
-        .spacing([40.0, 10.0])
-        .show(ui, |ui| {
-            ui.label(RichText::new("Name:").strong());
-            ui.label(&info.name);
-            ui.end_row();
-
-            ui.label(RichText::new("Type:").strong());
-            ui.label(&info.model_type);
-            ui.end_row();
-
-            ui.label(RichText::new("Task:").strong());
-            ui.label(&info.task_type);
-            ui.end_row();
-
-            ui.label(RichText::new("Input Dimensions:").strong());
-            ui.label(format!("{}", info.input_dim));
-            ui.end_row();
-
-            ui.label(RichText::new("Output Dimensions:").strong());
-            ui.label(format!("{}", info.output_dim));
-            ui.end_row();
-
-            ui.label(RichText::new("Created on:").strong());
-            ui.label(date_str);
-            ui.end_row();
-
-            if let Some(acc) = info.accuracy {
-                ui.label(RichText::new("Accuracy:").strong());
-                ui.label(format!("{:.2}%", acc * 100.0));
-                ui.end_row();
-            }
-        });
-
-    if let Some(ref desc) = info.description {
-        ui.separator();
-        ui.label(RichText::new("Description:").strong());
-
-        let text_height = ((desc.len() / 80) + 1).max(3) as f32;
-        ui.add(
-            egui::TextEdit::multiline(&mut desc.clone())
-                .desired_rows(text_height as usize)
-                .desired_width(ui.available_width())
-                .interactive(false),
-        );
-    }
-
-    ui.separator();
-    ui.collapsing("File Location", |ui| {
-        ui.label(&info.file_path);
-    });
 }

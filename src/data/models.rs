@@ -97,38 +97,6 @@ impl DatasetConverter {
 
         points
     }
-
-    pub fn from_bevy_points(points: &[Point], is_classification: bool) -> Self {
-        let n_points = points.len();
-        let mut inputs = Vec::new();
-        let mut outputs = Vec::new();
-
-        for Point(x, y, z, _) in points {
-            if is_classification {
-                inputs.push(vec![*x as f64, *y as f64]);
-            } else if *z == 0.0 {
-                inputs.push(vec![*x as f64]);
-                outputs.push(*y as f64);
-            } else {
-                inputs.push(vec![*x as f64, *y as f64]);
-                outputs.push(*z as f64);
-            }
-        }
-
-        let n_features = inputs[0].len();
-        let x_matrix = DMatrix::from_fn(n_points, n_features, |i, j| inputs[i][j]);
-        let y_vector = if is_classification {
-            DVector::from_vec(vec![0.0; n_points])
-        } else {
-            DVector::from_vec(outputs)
-        };
-
-        DatasetConverter {
-            inputs: x_matrix,
-            outputs: y_vector,
-            is_classification,
-        }
-    }
 }
 
 pub fn update_points(

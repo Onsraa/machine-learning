@@ -1,5 +1,5 @@
 use crate::algorithms::model_selector::ModelAlgorithm;
-use crate::algorithms::svm::{SVM, KernelType};
+use crate::algorithms::svm::{KernelType};
 use crate::resources::training::TrainingState;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};

@@ -1,0 +1,12 @@
+(
+    name: "BEST - Linear Simple",
+    model_type: "LinearClassifier",
+    task_type: "Classification",
+    input_dim: 2,
+    output_dim: 2,
+    accuracy: None,
+    created_at: "2025-03-01T14:28:12.576+01:00",
+    description: None,
+    file_path: "saved_models/cas_de_tests/BEST_-_Linear_Simple_LinearClassifier_20250301_142812.model",
+    category: "cas_de_tests",
+)
