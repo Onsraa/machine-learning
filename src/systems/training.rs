@@ -213,8 +213,23 @@ pub fn training_system(
                                 test_inputs.row(i).iter().cloned()
                             );
                             if let Ok(pred) = model.predict(&input) {
-                                println!("  Sample {}: Prediction = {:.3}, Actual = {:.3}",
-                                         i, pred[0], test_targets[(i, 0)]);
+                                if model.is_classification() && pred.len() > 1 {
+                                    // Utilisation de l'argmax pour obtenir la classe prédite
+                                    let (predicted_class, _) = pred.iter().enumerate()
+                                        .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
+                                        .unwrap();
+                                    println!(
+                                        "  Sample {}: Predicted = {}, Actual = {}",
+                                        i,
+                                        predicted_class,
+                                        test_targets[(i, 0)] as usize
+                                    );
+                                } else {
+                                    println!(
+                                        "  Sample {}: Prediction = {:.3}, Actual = {:.3}",
+                                        i, pred[0], test_targets[(i, 0)]
+                                    );
+                                }
                             }
                         }
                         training_state.error_message = None;
