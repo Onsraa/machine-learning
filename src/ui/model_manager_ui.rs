@@ -130,7 +130,6 @@ pub fn model_manager_ui(
                     .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
                     .show(contexts.ctx_mut(), |ui| {
                         ui.vertical_centered(|ui| {
-                            ui.heading("Confirm Deletion");
                             ui.label(format!(
                                 "Are you sure you want to delete \"{}\"?",
                                 model_name

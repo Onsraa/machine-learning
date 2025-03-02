@@ -44,7 +44,7 @@ impl Default for GameImageState {
             model_name: "Le Saint Prédicteur".to_string(),
             prediction_result: None,
             train_progress: 0.0,
-            train_message: "Prêt pour l'entraînement".to_string(),
+            train_message: "Ready for training".to_string(),
             train_epochs: 0,
             loss_history: Vec::new(),
             best_model_saved: false,
