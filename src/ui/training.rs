@@ -72,7 +72,7 @@ pub fn training_ui_system(mut contexts: EguiContexts, mut training_state: ResMut
             ui.add(
                 egui::Slider::new(
                     &mut training_state.hyperparameters.epoch_interval,
-                    0.01..=1.0,
+                    0.001..=1.0,
                 )
                 .logarithmic(true),
             );

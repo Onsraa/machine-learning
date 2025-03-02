@@ -112,6 +112,70 @@ pub fn model_manager_ui(
                         request_delete_for_index = Some(index);
                     }
                 });
+
+                // Ajout de la section de détails du modèle sélectionné
+                if let Some(index) = model_manager.selected_model_index {
+                    if index < model_manager.model_infos.len() {
+                        let info = &model_manager.model_infos[index];
+
+                        ui.add_space(10.0);
+                        ui.separator();
+                        ui.add_space(5.0);
+
+                        ui.heading("🔍 Model Details");
+
+                        egui::Grid::new("model_details_grid")
+                            .striped(true)
+                            .spacing([10.0, 4.0])
+                            .show(ui, |ui| {
+                                ui.label(RichText::new("Name:").strong());
+                                ui.label(&info.name);
+                                ui.end_row();
+
+                                ui.label(RichText::new("Model Type:").strong());
+                                ui.label(&info.model_type);
+                                ui.end_row();
+
+                                ui.label(RichText::new("Task:").strong());
+                                ui.label(&info.task_type);
+                                ui.end_row();
+
+                                ui.label(RichText::new("Input Dimensions:").strong());
+                                ui.label(format!("{}", info.input_dim));
+                                ui.end_row();
+
+                                ui.label(RichText::new("Output Dimensions:").strong());
+                                ui.label(format!("{}", info.output_dim));
+                                ui.end_row();
+
+                                ui.label(RichText::new("Created on:").strong());
+                                // Format date nicely (remove time component if possible)
+                                let date_parts: Vec<&str> = info.created_at.split('T').collect();
+                                ui.label(date_parts[0]);
+                                ui.end_row();
+
+                                if let Some(ref accuracy) = info.accuracy {
+                                    ui.label(RichText::new("Accuracy:").strong());
+                                    ui.label(format!("{:.2}%", accuracy * 100.0));
+                                    ui.end_row();
+                                }
+
+                                if let Some(ref description) = info.description {
+                                    ui.label(RichText::new("Description:").strong());
+                                    ui.label(description);
+                                    ui.end_row();
+                                }
+
+                                ui.label(RichText::new("File Path:").strong());
+                                let path = std::path::Path::new(&info.file_path);
+                                let file_name = path.file_name()
+                                    .unwrap_or_default()
+                                    .to_string_lossy();
+                                ui.label(file_name);
+                                ui.end_row();
+                            });
+                    }
+                }
             }
         });
 

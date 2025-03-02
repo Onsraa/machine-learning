@@ -216,11 +216,11 @@ pub fn game_classifier_ui(
             });
 
             ui.horizontal(|ui| {
-                ui.label("Learning rate:");
+                ui.label("Epoch interval:");
                 ui.add(
                     egui::Slider::new(
-                        &mut training_state.hyperparameters.learning_rate,
-                        0.00001..=0.1,
+                        &mut training_state.hyperparameters.epoch_interval,
+                        0.001..=1.0,
                     )
                     .logarithmic(true),
                 )
@@ -231,11 +231,40 @@ pub fn game_classifier_ui(
 
         ui.collapsing("Training", |ui| {
             let is_training = *app_training_state.get() == AppTrainingState::Training;
+            let is_paused = !is_training
+                && training_state.selected_model.is_some()
+                && game_state.train_epochs > 0;
 
             ui.horizontal(|ui| {
                 if is_training {
                     if ui.button("⏹ Stop").clicked() {
                         stop_training = true;
+                    }
+                } else if is_paused {
+                    if ui.button("▶ Resume").clicked() {
+                        if game_state.dataset_loaded {
+                            start_training = true;
+                        } else {
+                            game_state.train_message = "Error: Dataset unavailable!".to_string();
+                        }
+                    }
+
+                    // Ajouter le bouton Restart quand on est en pause
+                    if ui.button("🔄 Restart").clicked() {
+                        if game_state.dataset_loaded {
+                            // Réinitialiser le modèle pour un nouveau départ
+                            training_state.selected_model = None;
+                            training_state.metrics.reset();
+                            game_state.loss_history.clear();
+                            game_state.train_epochs = 0;
+                            game_state.train_progress = 0.0;
+                            game_state.best_model_saved = false;
+
+                            // Lancer l'entraînement
+                            start_training = true;
+                        } else {
+                            game_state.train_message = "Error: Load a dataset first!".to_string();
+                        }
                     }
                 } else {
                     if ui.button("▶ Start").clicked() {

@@ -10,7 +10,7 @@ pub fn update_test_case_ui(
     mut next_state: ResMut<NextState<ModelState>>,
 ) {
     egui::Window::new("Test Case Selector").show(contexts.ctx_mut(), |ui| {
-        ui.label("Choisissez le cas de test:");
+        ui.label("Choose a test case:");
         let variants = vec![
             ("Linear Simple", DataModel::LinearSimple),
             ("Linear Multiple", DataModel::LinearMultiple),
