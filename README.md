@@ -227,4 +227,4 @@ Cette section vous permet d'entraîner un modèle pour classifier des images de 
 
 ---
 
-Projet développé dans le cadre du cours de Machine Learning - ESGI 2023-2024.
+Projet développé dans le cadre du cours de Machine Learning - ESGI 2024-2025.
