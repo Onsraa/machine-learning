@@ -476,7 +476,6 @@ pub fn game_classifier_ui(
                     format!("Class {}", i)
                 };
 
-                // Normalize the Tanh score (-1 to 1) to (0 to 1)
                 let normalized_score = (score + 1.0) / 2.0;
                 let percentage = (normalized_score * 100.0).min(100.0).max(0.0);
 
@@ -556,7 +555,7 @@ pub fn game_classifier_ui(
             if training_state.selected_model.is_none() {
                 let mut activations =
                     vec![mlp_config.hidden_activation; mlp_config.hidden_layers.len()];
-                activations.push(Activation::Tanh); // Fixed output activation
+                activations.push(Activation::Tanh);
 
                 match MLP::new(
                     mlp_config.input_size,

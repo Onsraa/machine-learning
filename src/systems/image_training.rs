@@ -141,25 +141,12 @@ pub fn image_training_system(
                         game_state.train_progress = convergence;
 
                         if test_loss <= training_state.metrics.best_test_loss && !game_state.best_model_saved {
-                            let model_name = format!("GameClassifier_MLP_{}_classes", num_classes);
-                            let description = format!(
-                                "MLP for game image classification trained on {} images.",
-                                dataset_size
+                            // game_state.best_model_saved = true;
+                            game_state.train_message = format!(
+                                "{} - New best model (loss: {:.6})!",
+                                game_state.train_message,
+                                test_loss
                             );
-
-                            if let Err(e) = model_manager.save_model(
-                                &model,
-                                &model_name,
-                                Some(description)
-                            ) {
-                                println!("Erreur lors de la sauvegarde du modèle: {}", e);
-                            } else {
-                                game_state.best_model_saved = true;
-                                game_state.train_message = format!(
-                                    "{} - Best model saved!",
-                                    game_state.train_message
-                                );
-                            }
                         }
                     },
                     Err(e) => {
