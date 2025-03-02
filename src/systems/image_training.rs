@@ -25,6 +25,33 @@ pub fn image_training_system(
         return;
     }
 
+    if let Some(ref dataset) = game_state.dataset {
+        if !dataset.data.is_empty() {
+            let sample_vec_size = dataset.data[0].len();
+            // println!("Taille du vecteur d'entrée des échantillons: {}", sample_vec_size);
+
+            // Vérifier que le modèle a la bonne dimension d'entrée
+            if let Some(ref model) = training_state.selected_model {
+                if let crate::algorithms::model_selector::ModelAlgorithm::MLP(ref mlp, _) = model {
+                    if !mlp.layers.is_empty() {
+                        let model_input_size = mlp.layers[0].weights.ncols();
+                        // println!("Taille d'entrée du modèle: {}", model_input_size);
+
+                        if model_input_size != sample_vec_size {
+                            next_training_state.set(AppTrainingState::Idle);
+                            training_state.is_training = false;
+                            game_state.train_message = format!(
+                                "Incompatibilité de dimension: modèle({}) != données({})",
+                                model_input_size, sample_vec_size
+                            );
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     let current_time = time.elapsed_secs();
     if current_time - training_state.last_update < training_state.hyperparameters.epoch_interval {
         return;

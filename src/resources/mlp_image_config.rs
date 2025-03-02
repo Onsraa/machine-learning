@@ -21,12 +21,12 @@ pub struct MLPImageConfig {
 impl Default for MLPImageConfig {
     fn default() -> Self {
         Self {
-            input_size: 64 * 64,
+            input_size: 128 * 72 * 3,
             output_size: 4,
-            hidden_layers: vec![256, 64],
+            hidden_layers: vec![2048, 512],
             hidden_activation: Activation::ReLU,
             output_activation: Activation::Tanh,
-            learning_rate: 0.001,
+            learning_rate: 0.0005,
             batch_size: 32,
             train_ratio: 0.8,
         }

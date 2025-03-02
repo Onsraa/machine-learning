@@ -167,7 +167,6 @@ pub fn game_classifier_ui(
                     Activation::Tanh => 1,
                     Activation::Sigmoid => 2,
                     Activation::Linear => 3,
-                    _ => 0,
                 };
 
                 let mut selected_activation = current_activation;
@@ -553,8 +552,7 @@ pub fn game_classifier_ui(
     }
 
     if start_training {
-        if let Some(dataset) = &game_state.dataset {
-            // Si on n'a pas de modèle sélectionné, créer un nouveau MLP
+        if let Some(_) = &game_state.dataset {
             if training_state.selected_model.is_none() {
                 let mut activations =
                     vec![mlp_config.hidden_activation; mlp_config.hidden_layers.len()];

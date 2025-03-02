@@ -1,4 +1,4 @@
-use image::{DynamicImage, GrayImage};
+use image::{DynamicImage};
 use nalgebra::{DMatrix, DVector};
 use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
@@ -8,7 +8,7 @@ use std::fs::{self, File};
 use std::io::BufWriter;
 use std::path::{Path, PathBuf};
 
-pub const TARGET_SIZE: (u32, u32) = (64, 64);
+pub const TARGET_SIZE: (u32, u32) = (128, 72);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ImageDataset {
@@ -22,19 +22,34 @@ pub struct ImagePreprocessor;
 
 impl ImagePreprocessor {
     /// Redimensionne une image et la convertit en niveau de gris
-    pub fn preprocess_image(img: &DynamicImage) -> GrayImage {
-        let gray_img = img.to_luma8();
-        image::imageops::resize(
-            &gray_img,
+    pub fn preprocess_image(img: &DynamicImage) -> DynamicImage {
+        let resized = img.resize_exact(
             TARGET_SIZE.0,
             TARGET_SIZE.1,
-            image::imageops::FilterType::Lanczos3,
-        )
+            image::imageops::FilterType::Lanczos3
+        );
+        resized
     }
 
     /// Convertit une image en niveau de gris en vecteur normalisé
-    pub fn image_to_vector(img: &GrayImage) -> DVector<f64> {
-        let flat_vec: Vec<f64> = img.pixels().map(|p| p[0] as f64 / 255.0).collect();
+    pub fn image_to_vector(img: &DynamicImage) -> DVector<f64> {
+        let rgb_img = img.to_rgb8();
+
+        let resized = image::imageops::resize(
+            &rgb_img,
+            TARGET_SIZE.0,
+            TARGET_SIZE.1,
+            image::imageops::FilterType::Lanczos3
+        );
+
+        let mut flat_vec: Vec<f64> = Vec::with_capacity((TARGET_SIZE.0 * TARGET_SIZE.1 * 3) as usize);
+
+        for pixel in resized.pixels() {
+            // Normaliser chaque canal RGB
+            flat_vec.push(pixel[0] as f64 / 255.0);
+            flat_vec.push(pixel[1] as f64 / 255.0);
+            flat_vec.push(pixel[2] as f64 / 255.0);
+        }
 
         DVector::from_vec(flat_vec)
     }

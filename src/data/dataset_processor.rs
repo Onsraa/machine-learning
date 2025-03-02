@@ -7,8 +7,7 @@ use std::io::{BufWriter};
 use std::path::{Path, PathBuf};
 use rand::seq::SliceRandom;
 
-// Taille standard pour toutes les images
-pub const TARGET_SIZE: (u32, u32) = (64, 64);
+pub const TARGET_SIZE: (u32, u32) = (128, 72);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GameImageDataset {
@@ -148,6 +147,34 @@ impl DatasetProcessor {
         Ok(dataset)
     }
 
+    pub fn preprocess_image(img: &DynamicImage) -> DynamicImage {
+        // Ne plus convertir en niveaux de gris, mais redimensionner l'image
+        img.resize_exact(
+            TARGET_SIZE.0,
+            TARGET_SIZE.1,
+            image::imageops::FilterType::Lanczos3
+        )
+    }
+
+    pub fn image_to_vector(img: &DynamicImage) -> DVector<f64> {
+        // Convertir en RGB
+        let rgb_img = img.to_rgb8();
+
+        // Créer un vecteur à partir de l'image RGB
+        let mut flat_vec: Vec<f64> = Vec::with_capacity((TARGET_SIZE.0 * TARGET_SIZE.1 * 3) as usize);
+
+        for pixel in rgb_img.pixels() {
+            // Normaliser chaque canal RGB
+            flat_vec.push(pixel[0] as f64 / 255.0);
+            flat_vec.push(pixel[1] as f64 / 255.0);
+            flat_vec.push(pixel[2] as f64 / 255.0);
+        }
+
+        // println!("Taille du vecteur d'image: {}", flat_vec.len());
+
+        DVector::from_vec(flat_vec)
+    }
+
     pub fn process_image<P: AsRef<Path>>(path: P) -> Result<DVector<f64>, String> {
         // Charger l'image
         let img = match image::open(path.as_ref()) {
@@ -157,26 +184,9 @@ impl DatasetProcessor {
 
         let processed = Self::preprocess_image(&img);
 
+        // println!("Dimensions de l'image traitée: {}x{}", processed.width(), processed.height());
+
         Ok(Self::image_to_vector(&processed))
-    }
-
-    pub fn preprocess_image(img: &DynamicImage) -> GrayImage {
-        let gray_img = img.to_luma8();
-        image::imageops::resize(
-            &gray_img,
-            TARGET_SIZE.0,
-            TARGET_SIZE.1,
-            image::imageops::FilterType::Lanczos3
-        )
-    }
-
-    pub fn image_to_vector(img: &GrayImage) -> DVector<f64> {
-        let flat_vec: Vec<f64> = img
-            .pixels()
-            .map(|p| p[0] as f64 / 255.0)  // Normalisation entre 0 et 1
-            .collect();
-
-        DVector::from_vec(flat_vec)
     }
 
     pub fn split_dataset(
