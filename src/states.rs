@@ -13,5 +13,4 @@ pub enum TrainingState {
     #[default]
     Idle,
     Training,
-    Evaluating,
 }

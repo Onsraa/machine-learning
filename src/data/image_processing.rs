@@ -1,14 +1,13 @@
-use image::{DynamicImage, GenericImageView, GrayImage, ImageError};
+use image::{DynamicImage, GrayImage};
 use nalgebra::{DMatrix, DVector};
+use rand::seq::SliceRandom;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::error::Error;
 use std::fs::{self, File};
-use std::io::{BufWriter, Write};
+use std::io::BufWriter;
 use std::path::{Path, PathBuf};
-use rand::seq::SliceRandom;
-use serde::{Deserialize, Serialize};
 
-// La taille cible pour toutes les images
 pub const TARGET_SIZE: (u32, u32) = (64, 64);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -29,16 +28,13 @@ impl ImagePreprocessor {
             &gray_img,
             TARGET_SIZE.0,
             TARGET_SIZE.1,
-            image::imageops::FilterType::Lanczos3
+            image::imageops::FilterType::Lanczos3,
         )
     }
 
     /// Convertit une image en niveau de gris en vecteur normalisé
     pub fn image_to_vector(img: &GrayImage) -> DVector<f64> {
-        let flat_vec: Vec<f64> = img
-            .pixels()
-            .map(|p| p[0] as f64 / 255.0)
-            .collect();
+        let flat_vec: Vec<f64> = img.pixels().map(|p| p[0] as f64 / 255.0).collect();
 
         DVector::from_vec(flat_vec)
     }
@@ -53,11 +49,10 @@ impl ImagePreprocessor {
     /// Crée un dataset à partir d'un dossier contenant des sous-dossiers pour chaque catégorie
     pub fn create_dataset_from_directory<P: AsRef<Path>>(
         root_dir: P,
-        output_path: P
+        output_path: P,
     ) -> Result<ImageDataset, Box<dyn Error>> {
         let root = root_dir.as_ref();
 
-        // Récupérer toutes les catégories (sous-dossiers)
         let categories: Vec<String> = fs::read_dir(root)?
             .filter_map(|entry| {
                 let entry = entry.ok()?;
@@ -72,14 +67,12 @@ impl ImagePreprocessor {
 
         println!("Found categories: {:?}", categories);
 
-        // Créer le mapping catégorie -> index
         let category_mapping: HashMap<String, usize> = categories
             .iter()
             .enumerate()
             .map(|(i, cat)| (cat.clone(), i))
             .collect();
 
-        // Créer le mapping inverse
         let reverse_mapping: HashMap<usize, String> = category_mapping
             .iter()
             .map(|(k, v)| (*v, k.clone()))
@@ -88,25 +81,25 @@ impl ImagePreprocessor {
         let mut data = Vec::new();
         let mut labels = Vec::new();
 
-        // Parcourir chaque catégorie
         for (cat_name, cat_index) in &category_mapping {
             let cat_path = root.join(cat_name);
 
-            // Récupérer toutes les images de cette catégorie
             let image_pattern = format!("{}/*.{{jpg,jpeg,png}}", cat_path.display());
-            let image_paths: Vec<PathBuf> = glob::glob(&image_pattern)?
-                .filter_map(Result::ok)
-                .collect();
+            let image_paths: Vec<PathBuf> =
+                glob::glob(&image_pattern)?.filter_map(Result::ok).collect();
 
-            println!("Found {} images in category {}", image_paths.len(), cat_name);
+            println!(
+                "Found {} images in category {}",
+                image_paths.len(),
+                cat_name
+            );
 
-            // Traiter chaque image
             for img_path in image_paths {
                 match Self::load_and_preprocess(&img_path) {
                     Ok(img_vec) => {
                         data.push(img_vec.as_slice().to_vec());
                         labels.push(*cat_index);
-                    },
+                    }
                     Err(e) => {
                         println!("Error processing {}: {}", img_path.display(), e);
                     }
@@ -121,7 +114,6 @@ impl ImagePreprocessor {
             reverse_mapping,
         };
 
-        // Sauvegarder le dataset
         let file = File::create(output_path)?;
         let writer = BufWriter::new(file);
         serde_json::to_writer(writer, &dataset)?;
@@ -139,10 +131,7 @@ impl ImagePreprocessor {
     }
 
     /// Divise un dataset en ensembles d'entraînement et de test
-    pub fn split_dataset(
-        dataset: &ImageDataset,
-        train_ratio: f64
-    ) -> (Vec<usize>, Vec<usize>) {
+    pub fn split_dataset(dataset: &ImageDataset, train_ratio: f64) -> (Vec<usize>, Vec<usize>) {
         let n_samples = dataset.data.len();
         let n_train = (n_samples as f64 * train_ratio) as usize;
 
@@ -159,7 +148,7 @@ impl ImagePreprocessor {
     /// Convertit un dataset en matrices pour l'entraînement
     pub fn dataset_to_matrices(
         dataset: &ImageDataset,
-        indices: &[usize]
+        indices: &[usize],
     ) -> (DMatrix<f64>, DMatrix<f64>) {
         let n_samples = indices.len();
         if n_samples == 0 {
@@ -167,18 +156,14 @@ impl ImagePreprocessor {
         }
 
         let n_features = dataset.data[0].len();
-        let n_classes = dataset.category_mapping.len();
 
         let mut x_matrix = DMatrix::zeros(n_samples, n_features);
         let mut y_matrix = DMatrix::zeros(n_samples, 1);
 
         for (i, &idx) in indices.iter().enumerate() {
-            // Copier les features
             for j in 0..n_features {
                 x_matrix[(i, j)] = dataset.data[idx][j];
             }
-
-            // Étiquette de classe
             y_matrix[(i, 0)] = dataset.labels[idx] as f64;
         }
 

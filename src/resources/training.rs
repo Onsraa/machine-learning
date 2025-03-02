@@ -19,7 +19,6 @@ pub struct Hyperparameters {
     pub train_ratio: f64,
     pub batch_size: usize,
     pub epoch_interval: f32,
-    pub early_stopping_patience: usize,
 }
 
 impl Default for Hyperparameters {
@@ -29,7 +28,6 @@ impl Default for Hyperparameters {
             train_ratio: 0.8,
             batch_size: 32,
             epoch_interval: 0.1,
-            early_stopping_patience: 300,
         }
     }
 }
@@ -95,11 +93,6 @@ impl TrainingMetrics {
         self.current_epoch = 0;
         self.best_test_loss = f64::INFINITY;
         self.epochs_since_improvement = 0;
-    }
-
-    /// Checks if early stopping should be triggered
-    pub fn should_stop_early(&self, patience: usize) -> bool {
-        self.epochs_since_improvement >= patience
     }
 
     /// Gets the training progress as a percentage from 0 to 1

@@ -18,8 +18,6 @@ pub struct GameImageState {
 
     // Interface utilisateur
     pub dataset_folder_path: String,
-    pub show_training_ui: bool,
-    pub show_prediction_ui: bool,
     pub model_name: String,
 
     // Résultats de classification
@@ -29,7 +27,7 @@ pub struct GameImageState {
     pub train_progress: f32,
     pub train_message: String,
     pub train_epochs: usize,
-    pub loss_history: Vec<(f64, f64)>, // (train_loss, test_loss)
+    pub loss_history: Vec<(f64, f64)>,
     pub best_model_saved: bool,
 }
 
@@ -41,11 +39,9 @@ impl Default for GameImageState {
             dataset: None,
             selected_image_path: None,
             processed_image: None,
-            image_path_input: "images/test.jpg".to_string(),
+            image_path_input: "predict_dataset/".to_string(),
             dataset_folder_path: "dataset".to_string(),
-            show_training_ui: true,
-            show_prediction_ui: false,
-            model_name: "Modèle_Jeux".to_string(),
+            model_name: "Le Saint Prédicteur".to_string(),
             prediction_result: None,
             train_progress: 0.0,
             train_message: "Prêt pour l'entraînement".to_string(),

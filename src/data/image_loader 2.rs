@@ -1,6 +1,6 @@
 use crate::data::image_processing::{ImagePreprocessor, TARGET_SIZE};
 use bevy::prelude::*;
-use image::{GrayImage, RgbaImage};
+use image::{GenericImageView, GrayImage, RgbaImage};
 use nalgebra::DVector;
 use std::path::Path;
 
@@ -29,11 +29,14 @@ impl ImageLoader {
             }
         }
 
+        // Convertir en RGBA pour Bevy
         let rgba_buffer = RgbaImage::from_fn(TARGET_SIZE.0, TARGET_SIZE.1, |x, y| {
             let gray = img_buffer.get_pixel(x, y)[0];
             image::Rgba([gray, gray, gray, 255])
         });
 
+        // Créer une image Bevy
+        let size = [TARGET_SIZE.0 as usize, TARGET_SIZE.1 as usize];
         let data = rgba_buffer.into_raw();
 
         let mut bevy_image = Image::new(

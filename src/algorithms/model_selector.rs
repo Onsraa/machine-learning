@@ -3,7 +3,7 @@ use crate::algorithms::linear_classifier::LinearClassifier;
 use crate::algorithms::linear_regression::LinearRegression;
 use crate::algorithms::mlp::MLP;
 use crate::algorithms::rbf::RBF;
-use crate::algorithms::svm::{KernelType, SVM};
+use crate::algorithms::svm::{SVM};
 use crate::data::universal_dataset::TaskType;
 use nalgebra::{DMatrix, DVector};
 use serde::{Deserialize, Serialize};

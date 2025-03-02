@@ -10,12 +10,11 @@ use std::path::{Path, PathBuf};
 
 #[derive(Resource)]
 pub struct ModelManager {
-    pub base_directory: PathBuf,                  // Dossier principal de sauvegarde
-    pub save_directory: PathBuf,                  // Dossier actif pour les sauvegardes
+    pub base_directory: PathBuf,
+    pub save_directory: PathBuf,
     pub model_infos: Vec<ModelSaveInfo>,
     pub selected_model_index: Option<usize>,
     pub save_dialog_open: bool,
-    pub load_dialog_open: bool,
     pub dialog_model_name: String,
     pub dialog_description: String,
     pub status_message: Option<(String, f32)>,
@@ -31,7 +30,6 @@ impl Default for ModelManager {
             model_infos: vec![],
             selected_model_index: None,
             save_dialog_open: false,
-            load_dialog_open: false,
             dialog_model_name: "".to_string(),
             dialog_description: "".to_string(),
             status_message: None,
@@ -52,7 +50,7 @@ pub struct ModelSaveInfo {
     pub created_at: String,
     pub description: Option<String>,
     pub file_path: String,
-    pub category: String,                        // Nouvelle propriété pour distinguer la catégorie
+    pub category: String,
 }
 
 impl ModelManager {
@@ -71,7 +69,6 @@ impl ModelManager {
             }
         }
 
-        // Charger tous les modèles des deux répertoires
         let mut model_infos = Vec::new();
         model_infos.extend(Self::load_model_infos_from_dir(&cas_tests_dir, "cas_de_tests"));
         model_infos.extend(Self::load_model_infos_from_dir(&images_jeux_dir, "images_jeux"));
@@ -82,7 +79,6 @@ impl ModelManager {
             model_infos,
             selected_model_index: None,
             save_dialog_open: false,
-            load_dialog_open: false,
             dialog_model_name: String::new(),
             dialog_description: String::new(),
             status_message: None,
@@ -91,7 +87,6 @@ impl ModelManager {
         }
     }
 
-    // Charge les informations des modèles d'un répertoire spécifique
     fn load_model_infos_from_dir(dir: &Path, category: &str) -> Vec<ModelSaveInfo> {
         let mut infos = Vec::new();
 
@@ -103,7 +98,6 @@ impl ModelManager {
                         let mut contents = String::new();
                         if file.read_to_string(&mut contents).is_ok() {
                             if let Ok(mut info) = ron::from_str::<ModelSaveInfo>(&contents) {
-                                // Mettre à jour la catégorie
                                 info.category = category.to_string();
                                 infos.push(info);
                             }
@@ -116,7 +110,6 @@ impl ModelManager {
         infos
     }
 
-    // Définit le dossier de sauvegarde en fonction de la catégorie
     pub fn set_save_category(&mut self, category: &str) {
         self.save_directory = self.base_directory.join(category);
 
@@ -127,7 +120,6 @@ impl ModelManager {
         }
     }
 
-    // Sauvegarde un modèle dans le dossier actif avec une catégorie spécifiée
     pub fn save_model_with_category(
         &mut self,
         model: &ModelAlgorithm,
@@ -135,7 +127,6 @@ impl ModelManager {
         description: Option<String>,
         category: &str,
     ) -> Result<(), String> {
-        // Définir le dossier de sauvegarde
         self.set_save_category(category);
 
         let model_type = match model {
@@ -234,7 +225,6 @@ impl ModelManager {
         Ok(())
     }
 
-    // Méthode de compatibilité qui appelle save_model_with_category avec la catégorie "cas_de_tests"
     pub fn save_model(
         &mut self,
         model: &ModelAlgorithm,
@@ -246,51 +236,72 @@ impl ModelManager {
 
     pub fn load_model(&self, index: usize) -> Result<ModelAlgorithm, String> {
         if index >= self.model_infos.len() {
-            return Err("Index de modèle invalide".to_string());
+            return Err("Invalid model index".to_string());
         }
 
         let info = &self.model_infos[index];
         let path = Path::new(&info.file_path);
 
         if !path.exists() {
-            return Err(format!("Fichier modèle non trouvé: {}", path.display()));
+            return Err(format!("Model file not found: {}", path.display()));
         }
+
+        println!("Chargement du modèle: {}", path.display());
 
         let mut file = match File::open(path) {
             Ok(file) => file,
-            Err(e) => return Err(format!("Erreur lors de l'ouverture du fichier modèle: {}", e)),
+            Err(e) => return Err(format!("Failed to open model file: {}", e)),
         };
 
         let mut buffer = String::new();
         if let Err(e) = file.read_to_string(&mut buffer) {
-            return Err(format!("Erreur lors de la lecture du fichier modèle: {}", e));
+            return Err(format!("Failed to read model file: {}", e));
         }
 
+        println!("Contenu lu, longueur: {} octets", buffer.len());
+
         match ron::from_str::<ModelAlgorithm>(&buffer) {
-            Ok(model) => Ok(model),
-            Err(e) => Err(format!("Erreur lors de la désérialisation du modèle: {}", e)),
+            Ok(model) => {
+                println!("Modèle chargé avec succès (format RON)");
+                Ok(model)
+            },
+            Err(ron_err) => {
+                println!("Erreur de désérialisation RON: {}", ron_err);
+
+                let file = match File::open(path) {
+                    Ok(file) => file,
+                    Err(e) => return Err(format!("Failed to reopen model file: {}", e)),
+                };
+
+                match bincode::deserialize_from::<_, ModelAlgorithm>(file) {
+                    Ok(model) => {
+                        println!("Modèle chargé avec succès (format Bincode)");
+                        Ok(model)
+                    },
+                    Err(bin_err) => Err(format!("Failed to deserialize model: RON error: {}, Bincode error: {}", ron_err, bin_err)),
+                }
+            }
         }
     }
 
     pub fn delete_model(&mut self, index: usize) -> Result<(), String> {
         if index >= self.model_infos.len() {
-            return Err("Index de modèle invalide".to_string());
+            return Err("Invalid model index".to_string());
         }
 
         let info = &self.model_infos[index];
         let model_path = Path::new(&info.file_path);
         let info_path = model_path.with_extension("info");
 
-        // Supprimer les fichiers
         if model_path.exists() {
             if let Err(e) = fs::remove_file(model_path) {
-                return Err(format!("Erreur lors de la suppression du fichier modèle: {}", e));
+                println!("Échec de la suppression du fichier modèle: {}", e);
             }
         }
 
         if info_path.exists() {
             if let Err(e) = fs::remove_file(info_path) {
-                return Err(format!("Erreur lors de la suppression du fichier d'informations: {}", e));
+                println!("Échec de la suppression du fichier info: {}", e);
             }
         }
 
@@ -305,7 +316,8 @@ impl ModelManager {
             }
         }
 
-        self.set_status(format!("Modèle {} supprimé", model_name), 3.0);
+        println!("Modèle {} supprimé avec succès", model_name);
+        self.set_status(format!("Model {} deleted", model_name), 3.0);
 
         Ok(())
     }
@@ -343,7 +355,6 @@ impl ModelManager {
         }
     }
 
-    // Recharge tous les modèles des deux répertoires
     pub fn refresh(&mut self) {
         let cas_tests_dir = self.base_directory.join("cas_de_tests");
         let images_jeux_dir = self.base_directory.join("images_jeux");

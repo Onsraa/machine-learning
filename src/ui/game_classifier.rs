@@ -5,11 +5,10 @@ use crate::resources::game_image_state::GameImageState;
 use crate::resources::mlp_image_config::MLPImageConfig;
 use crate::resources::model_managers::ModelManager;
 use crate::resources::training::TrainingState;
-use crate::states::{AppState, TrainingState as AppTrainingState};
+use crate::states::TrainingState as AppTrainingState;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
 use egui_plot::{Line, Plot, PlotPoints};
-use nalgebra::DVector;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -22,23 +21,75 @@ pub fn game_classifier_ui(
     mut next_training_state: ResMut<NextState<AppTrainingState>>,
     mut model_manager: ResMut<ModelManager>,
 ) {
-    let ctx = contexts.ctx_mut();
+    if game_state.image_path_input.is_empty() {
+        game_state.image_path_input = "predict_dataset/".to_string();
+    }
 
-    // Variables d'action
+    let ctx = contexts.ctx_mut();
     let mut load_dataset = false;
-    let mut load_image = false;
     let mut predict_image = false;
     let mut start_training = false;
     let mut stop_training = false;
     let mut save_model = false;
     let mut load_model = false;
+    let mut refresh_image_models = false;
 
-    // Panel gauche pour les contrôles
+    if model_manager.confirm_delete_dialog_open {
+        if let Some(index) = model_manager.model_to_delete {
+            if index < model_manager.model_infos.len() {
+                let model_name = model_manager.model_infos[index].name.clone();
+
+                egui::Window::new("Confirmer la suppression")
+                    .collapsible(false)
+                    .resizable(false)
+                    .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+                    .show(ctx, |ui| {
+                        ui.vertical_centered(|ui| {
+                            ui.heading("Confirmer la suppression");
+                            ui.label(format!(
+                                "Êtes-vous sûr de vouloir supprimer \"{}\" ?",
+                                model_name
+                            ));
+                            ui.label("Cette action ne peut pas être annulée.");
+
+                            ui.add_space(10.0);
+
+                            ui.horizontal(|ui| {
+                                if ui.button("Annuler").clicked() {
+                                    model_manager.cancel_delete();
+                                }
+
+                                ui.with_layout(
+                                    egui::Layout::right_to_left(egui::Align::RIGHT),
+                                    |ui| {
+                                        if ui
+                                            .button(egui::RichText::new("Supprimer").color(egui::Color32::RED))
+                                            .clicked()
+                                        {
+                                            if let Err(e) = model_manager.confirm_delete() {
+                                                game_state.train_message = format!("Erreur: {}", e);
+                                                println!("Erreur lors de la suppression: {}", e);
+                                            } else {
+                                                game_state.train_message = format!("Modèle {} supprimé", model_name);
+                                                println!("Modèle supprimé avec succès!");
+                                            }
+                                        }
+                                    },
+                                );
+                            });
+                        });
+                    });
+            } else {
+                model_manager.cancel_delete();
+            }
+        }
+    }
+
     egui::SidePanel::left("controls_panel").show(ctx, |ui| {
+        ui.add_space(10.0);
         ui.heading("Classification d'Images");
         ui.separator();
 
-        // Section Dataset
         ui.collapsing("Dataset", |ui| {
             ui.horizontal(|ui| {
                 ui.label("Dossier des images:");
@@ -73,30 +124,25 @@ pub fn game_classifier_ui(
 
         ui.separator();
 
-        // Section Configuration MLP
         ui.collapsing("Configuration MLP", |ui| {
             ui.label(format!("Taille d'entrée: {} ({}×{})",
                              mlp_config.input_size, TARGET_SIZE.0, TARGET_SIZE.1));
 
-            // Nombre de couches cachées
             let mut layer_count = mlp_config.hidden_layers.len() as i32;
             ui.horizontal(|ui| {
                 ui.label("Nombre de couches cachées:");
-                if ui.add(egui::DragValue::new(&mut layer_count).range(1..=5)).changed() {
+                if ui.add(egui::DragValue::new(&mut layer_count).range(1..=10)).changed() {
                     let current_len = mlp_config.hidden_layers.len();
                     if layer_count > current_len as i32 {
-                        // Ajouter des couches
                         for _ in 0..(layer_count as usize - current_len) {
                             mlp_config.hidden_layers.push(64);
                         }
                     } else {
-                        // Retirer des couches
                         mlp_config.hidden_layers.truncate(layer_count as usize);
                     }
                 }
             });
 
-            // Configuration de chaque couche
             for (i, neurons) in mlp_config.hidden_layers.iter_mut().enumerate() {
                 ui.horizontal(|ui| {
                     ui.label(format!("Couche {} - Neurones:", i + 1));
@@ -104,7 +150,6 @@ pub fn game_classifier_ui(
                 });
             }
 
-            // Activation des couches cachées
             ui.horizontal(|ui| {
                 ui.label("Activation couches cachées:");
 
@@ -119,7 +164,7 @@ pub fn game_classifier_ui(
 
                 let mut selected_activation = current_activation;
 
-                egui::ComboBox::from_id_source("hidden_activation")
+                egui::ComboBox::from_id_salt("hidden_activation")
                     .selected_text(activation_options[current_activation])
                     .show_ui(ui, |ui| {
                         for (i, name) in activation_options.iter().enumerate() {
@@ -127,7 +172,6 @@ pub fn game_classifier_ui(
                         }
                     });
 
-                // Si l'activation a changé, mettre à jour la configuration
                 if selected_activation != current_activation {
                     mlp_config.hidden_activation = match selected_activation {
                         0 => Activation::ReLU,
@@ -143,7 +187,6 @@ pub fn game_classifier_ui(
 
             ui.separator();
 
-            // Hyperparamètres
             ui.label("Hyperparamètres");
 
             ui.horizontal(|ui| {
@@ -161,21 +204,10 @@ pub fn game_classifier_ui(
                 ui.label("Ratio d'entraînement:");
                 ui.add(egui::Slider::new(&mut mlp_config.train_ratio, 0.5..=0.9));
             });
-
-            ui.horizontal(|ui| {
-                ui.label("Époques max:");
-                ui.add(egui::Slider::new(&mut mlp_config.max_epochs, 10..=1000));
-            });
-
-            ui.horizontal(|ui| {
-                ui.label("Patience arrêt précoce:");
-                ui.add(egui::Slider::new(&mut mlp_config.early_stopping_patience, 5..=100));
-            });
         });
 
         ui.separator();
 
-        // Section Entraînement
         ui.collapsing("Entraînement", |ui| {
             let is_training = *app_training_state.get() == AppTrainingState::Training;
 
@@ -194,23 +226,14 @@ pub fn game_classifier_ui(
                     }
                 }
             });
-
             ui.label(&game_state.train_message);
-
-            if is_training {
-                ui.add(egui::ProgressBar::new(game_state.train_progress)
-                    .show_percentage()
-                    .animate(true));
-            }
-
             if game_state.train_epochs > 0 {
-                ui.label(format!("Époque: {}/{}", game_state.train_epochs, mlp_config.max_epochs));
+                ui.label(format!("Époque: {}", game_state.train_epochs));
             }
         });
 
         ui.separator();
 
-        // Section Sauvegarde/Chargement
         ui.collapsing("Modèles", |ui| {
             ui.horizontal(|ui| {
                 ui.label("Nom du modèle:");
@@ -229,48 +252,65 @@ pub fn game_classifier_ui(
                 if ui.button("📂 Charger").clicked() {
                     load_model = true;
                 }
+
+                if ui.button("🔄 Rafraîchir liste").clicked() {
+                    refresh_image_models = true;
+                }
             });
 
-            // Variable temporaire pour stocker l'index sélectionné
             let mut selected_index = model_manager.selected_model_index;
 
-            // Liste des modèles sauvegardés
             ui.label("Modèles disponibles:");
             egui::ScrollArea::vertical().max_height(150.0).show(ui, |ui| {
-                let mut selected_index = model_manager.selected_model_index;
+                let model_count = model_manager.model_infos.iter()
+                    .filter(|info| info.model_type == "MLP" &&
+                        info.task_type == "Classification" &&
+                        info.category == "images_jeux")
+                    .count();
 
-                for (i, info) in model_manager.model_infos.iter().enumerate() {
-                    // Ne montrer que les modèles de classification d'images (catégorie "images_jeux")
-                    if info.model_type == "MLP" && info.task_type == "Classification" && info.category == "images_jeux" {
-                        let is_selected = model_manager.selected_model_index == Some(i);
+                let mut delete_index = None;
 
-                        let text = if is_selected {
-                            egui::RichText::new(&info.name).strong().color(egui::Color32::LIGHT_BLUE)
-                        } else {
-                            egui::RichText::new(&info.name)
-                        };
+                if model_count == 0 {
+                    ui.colored_label(egui::Color32::YELLOW, "Aucun modèle trouvé - Utilisez 'Rafraîchir liste'");
+                } else {
+                    for (i, info) in model_manager.model_infos.iter().enumerate() {
+                        // Ne montrer que les modèles de classification d'images (catégorie "images_jeux")
+                        if info.model_type == "MLP" && info.task_type == "Classification" && info.category == "images_jeux" {
+                            let is_selected = model_manager.selected_model_index == Some(i);
 
-                        if ui.selectable_label(is_selected, text).clicked() {
-                            selected_index = Some(i);
+                            ui.horizontal(|ui| {
+                                let text = if is_selected {
+                                    egui::RichText::new(&info.name).strong().color(egui::Color32::LIGHT_BLUE)
+                                } else {
+                                    egui::RichText::new(&info.name)
+                                };
+
+                                if ui.selectable_label(is_selected, text).clicked() {
+                                    selected_index = Some(i);
+                                }
+
+                                ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
+                                    if ui.button("🗑️ Supprimer").clicked() {
+                                        delete_index = Some(i);
+                                    }
+                                });
+                            });
                         }
                     }
                 }
 
-                // Mettre à jour l'index sélectionné si changé
                 if selected_index != model_manager.selected_model_index {
                     model_manager.selected_model_index = selected_index;
                 }
-            });
 
-            // Mettre à jour l'index sélectionné après la boucle
-            if selected_index != model_manager.selected_model_index {
-                model_manager.selected_model_index = selected_index;
-            }
+                if let Some(index) = delete_index {
+                    model_manager.request_delete_confirmation(index);
+                }
+            });
         });
 
         ui.separator();
 
-        // Section Prédiction
         ui.collapsing("Prédiction", |ui| {
             ui.horizontal(|ui| {
                 ui.label("Chemin de l'image:");
@@ -292,12 +332,10 @@ pub fn game_classifier_ui(
         });
     });
 
-    // Panel central pour les graphiques et résultats
     egui::CentralPanel::default().show(ctx, |ui| {
         if !game_state.loss_history.is_empty() {
             ui.heading("Courbes d'apprentissage");
 
-            // Dernières métriques
             if let Some(&(train_loss, test_loss)) = game_state.loss_history.last() {
                 ui.horizontal(|ui| {
                     ui.label(format!("Erreur d'entraînement: {:.6}", train_loss));
@@ -305,7 +343,6 @@ pub fn game_classifier_ui(
                 });
             }
 
-            // Courbe d'apprentissage
             let train_points: PlotPoints = game_state.loss_history
                 .iter()
                 .enumerate()
@@ -332,7 +369,6 @@ pub fn game_classifier_ui(
                 });
         }
 
-        // Affichage des résultats de prédiction
         if let Some((class_index, scores)) = &game_state.prediction_result {
             ui.add_space(20.0);
             ui.separator();
@@ -375,7 +411,6 @@ pub fn game_classifier_ui(
         }
     });
 
-    // Exécuter les actions déclenchées par l'UI
     if load_dataset {
         match DatasetProcessor::process_dataset(PathBuf::from(&game_state.dataset_folder_path), None::<PathBuf>) {
             Ok(dataset) => {
@@ -396,18 +431,15 @@ pub fn game_classifier_ui(
     }
 
     if predict_image {
-        // Charger et traiter l'image
         let path = PathBuf::from(&game_state.image_path_input);
 
         match DatasetProcessor::process_image(&path) {
             Ok(img_vec) => {
                 game_state.processed_image = Some(img_vec);
 
-                // Prédire si un modèle est disponible
                 if let Some(model) = &training_state.selected_model {
                     match model.predict(game_state.processed_image.as_ref().unwrap()) {
                         Ok(scores) => {
-                            // Trouver la classe prédite
                             let mut max_score = f64::NEG_INFINITY;
                             let mut predicted_class = 0;
 
@@ -439,7 +471,6 @@ pub fn game_classifier_ui(
 
     if start_training {
         if let Some(dataset) = &game_state.dataset {
-            // Créer un MLP adapté à la classification d'images
             let mut activations = vec![mlp_config.hidden_activation; mlp_config.hidden_layers.len()];
             activations.push(Activation::Tanh); // Activation de sortie fixe
 
@@ -452,23 +483,19 @@ pub fn game_classifier_ui(
                 Ok(mlp) => {
                     training_state.selected_model = Some(ModelAlgorithm::new_mlp(
                         mlp,
-                        true, // Classification
+                        true,
                     ));
 
                     // Configurer l'entraînement
                     training_state.hyperparameters.learning_rate = mlp_config.learning_rate;
                     training_state.hyperparameters.batch_size = mlp_config.batch_size;
                     training_state.hyperparameters.train_ratio = mlp_config.train_ratio;
-                    training_state.hyperparameters.early_stopping_patience = mlp_config.early_stopping_patience;
-
-                    // Réinitialiser les métriques
                     training_state.metrics.reset();
                     game_state.loss_history.clear();
                     game_state.train_epochs = 0;
                     game_state.train_progress = 0.0;
                     game_state.best_model_saved = false;
 
-                    // Démarrer l'entraînement
                     training_state.is_training = true;
                     next_training_state.set(AppTrainingState::Training);
 
@@ -487,7 +514,12 @@ pub fn game_classifier_ui(
         game_state.train_message = "Entraînement arrêté".to_string();
     }
 
-    // Dans la partie exécutant les actions
+    if refresh_image_models {
+        println!("Rafraîchissement de la liste des modèles d'images de jeux...");
+        model_manager.refresh();
+        game_state.train_message = "Liste des modèles rafraîchie".to_string();
+    }
+
     if save_model {
         if let Some(model) = &training_state.selected_model {
             let model_name = if game_state.model_name.trim().is_empty() {
@@ -501,7 +533,6 @@ pub fn game_classifier_ui(
                 mlp_config.hidden_layers
             );
 
-            // Utiliser la nouvelle méthode avec la catégorie "images_jeux"
             match model_manager.save_model_with_category(
                 model,
                 &model_name,
@@ -516,7 +547,6 @@ pub fn game_classifier_ui(
                 }
             }
 
-            // Recharger la liste des modèles
             model_manager.refresh();
         }
     }
@@ -527,9 +557,12 @@ pub fn game_classifier_ui(
                 Ok(model) => {
                     training_state.selected_model = Some(model);
                     game_state.train_message = "Modèle chargé avec succès".to_string();
+
+                    println!("Modèle chargé avec succès à l'index {}", index);
                 },
                 Err(e) => {
                     game_state.train_message = format!("Erreur lors du chargement: {}", e);
+                    println!("Erreur lors du chargement du modèle: {}", e);
                 }
             }
         } else {

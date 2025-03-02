@@ -6,6 +6,5 @@ pub mod mlp_config;
 pub mod rbf_config;
 pub mod svm_config;
 pub mod model_manager_ui;
-mod image_classifier;
-pub(crate) mod menu;
-pub(crate) mod game_classifier;
+pub mod menu;
+pub mod game_classifier;

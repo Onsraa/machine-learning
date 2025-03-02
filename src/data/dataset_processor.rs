@@ -1,9 +1,9 @@
-use image::{DynamicImage, GenericImageView, GrayImage};
+use image::{DynamicImage, GrayImage};
 use nalgebra::{DMatrix, DVector};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::{self, File};
-use std::io::{BufWriter, Write};
+use std::io::{BufWriter};
 use std::path::{Path, PathBuf};
 use rand::seq::SliceRandom;
 
@@ -16,7 +16,7 @@ pub struct GameImageDataset {
     pub labels: Vec<usize>,
     pub category_mapping: HashMap<String, usize>,
     pub reverse_mapping: HashMap<usize, String>,
-    pub sample_paths: Vec<PathBuf>, // Chemins des images pour référence
+    pub sample_paths: Vec<PathBuf>,
 }
 
 impl Default for GameImageDataset {
@@ -34,19 +34,16 @@ impl Default for GameImageDataset {
 pub struct DatasetProcessor;
 
 impl DatasetProcessor {
-    // Charge et traite le dataset complet depuis un dossier de base
     pub fn process_dataset<P: AsRef<Path>>(
         root_dir: P,
         save_path: Option<P>,
     ) -> Result<GameImageDataset, String> {
         let root = root_dir.as_ref();
 
-        // Vérifier que le dossier existe
         if !root.exists() || !root.is_dir() {
             return Err(format!("Le dossier {} n'existe pas", root.display()));
         }
 
-        // Trouver tous les sous-dossiers (catégories)
         let categories: Vec<String> = match fs::read_dir(root) {
             Ok(entries) => {
                 entries
@@ -70,7 +67,6 @@ impl DatasetProcessor {
 
         println!("Catégories trouvées: {:?}", categories);
 
-        // Créer les mappings catégorie <-> index
         let mut category_mapping: HashMap<String, usize> = HashMap::new();
         let mut reverse_mapping: HashMap<usize, String> = HashMap::new();
 
@@ -83,14 +79,11 @@ impl DatasetProcessor {
         let mut labels = Vec::new();
         let mut sample_paths = Vec::new();
 
-        // Traiter chaque catégorie
         for (cat_name, cat_index) in &category_mapping {
             let cat_dir = root.join(cat_name);
 
-            // Trouver toutes les images dans cette catégorie
             let mut image_paths: Vec<PathBuf> = Vec::new();
 
-            // Extensions d'images supportées
             for ext in &["jpg", "jpeg", "png"] {
                 let pattern = format!("{}/*.{}", cat_dir.display(), ext);
                 match glob::glob(&pattern) {
@@ -109,12 +102,10 @@ impl DatasetProcessor {
 
             println!("Trouvé {} images dans la catégorie {}", image_paths.len(), cat_name);
 
-            // Si aucune image n'est trouvée, passer à la catégorie suivante
             if image_paths.is_empty() {
                 continue;
             }
 
-            // Traiter chaque image
             for img_path in image_paths {
                 match Self::process_image(&img_path) {
                     Ok(img_vec) => {
@@ -141,7 +132,6 @@ impl DatasetProcessor {
             sample_paths,
         };
 
-        // Sauvegarder le dataset si un chemin est fourni
         if let Some(save_path) = save_path {
             match File::create(save_path.as_ref()) {
                 Ok(file) => {
@@ -158,7 +148,6 @@ impl DatasetProcessor {
         Ok(dataset)
     }
 
-    // Traite une seule image
     pub fn process_image<P: AsRef<Path>>(path: P) -> Result<DVector<f64>, String> {
         // Charger l'image
         let img = match image::open(path.as_ref()) {
@@ -166,14 +155,11 @@ impl DatasetProcessor {
             Err(e) => return Err(format!("Erreur lors du chargement de l'image: {}", e)),
         };
 
-        // Convertir en niveaux de gris et redimensionner
         let processed = Self::preprocess_image(&img);
 
-        // Convertir en vecteur
         Ok(Self::image_to_vector(&processed))
     }
 
-    // Prétraite une image: redimensionnement et conversion en niveaux de gris
     pub fn preprocess_image(img: &DynamicImage) -> GrayImage {
         let gray_img = img.to_luma8();
         image::imageops::resize(
@@ -184,7 +170,6 @@ impl DatasetProcessor {
         )
     }
 
-    // Convertit une image en niveaux de gris en vecteur normalisé
     pub fn image_to_vector(img: &GrayImage) -> DVector<f64> {
         let flat_vec: Vec<f64> = img
             .pixels()
@@ -194,7 +179,6 @@ impl DatasetProcessor {
         DVector::from_vec(flat_vec)
     }
 
-    // Divise le dataset en ensembles d'entraînement et de test
     pub fn split_dataset(
         dataset: &GameImageDataset,
         train_ratio: f64
@@ -202,19 +186,16 @@ impl DatasetProcessor {
         let n_samples = dataset.data.len();
         let n_train = (n_samples as f64 * train_ratio) as usize;
 
-        // Mélanger les indices
         let mut indices: Vec<usize> = (0..n_samples).collect();
         let mut rng = rand::thread_rng();
         indices.shuffle(&mut rng);
 
-        // Diviser en ensembles d'entraînement et de test
         let train_indices = indices[..n_train].to_vec();
         let test_indices = indices[n_train..].to_vec();
 
         (train_indices, test_indices)
     }
 
-    // Convertit les données du dataset en matrices pour l'entraînement
     pub fn dataset_to_matrices(
         dataset: &GameImageDataset,
         indices: &[usize]
@@ -226,34 +207,18 @@ impl DatasetProcessor {
 
         let n_features = dataset.data[0].len();
 
-        // Créer les matrices
         let mut x_matrix = DMatrix::zeros(n_samples, n_features);
         let mut y_matrix = DMatrix::zeros(n_samples, 1);
 
-        // Remplir les matrices
         for (i, &idx) in indices.iter().enumerate() {
             // Copier les features
             for j in 0..n_features {
                 x_matrix[(i, j)] = dataset.data[idx][j];
             }
 
-            // Étiquette de classe
             y_matrix[(i, 0)] = dataset.labels[idx] as f64;
         }
 
         (x_matrix, y_matrix)
-    }
-
-    // Charge un dataset depuis un fichier
-    pub fn load_dataset<P: AsRef<Path>>(path: P) -> Result<GameImageDataset, String> {
-        match File::open(path.as_ref()) {
-            Ok(file) => {
-                match serde_json::from_reader(file) {
-                    Ok(dataset) => Ok(dataset),
-                    Err(e) => Err(format!("Erreur lors de la désérialisation du dataset: {}", e)),
-                }
-            },
-            Err(e) => Err(format!("Erreur lors de l'ouverture du fichier: {}", e)),
-        }
     }
 }

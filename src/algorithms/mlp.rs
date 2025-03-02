@@ -99,7 +99,7 @@ impl MLP {
         input_dim: usize,
         hidden_layers: Vec<usize>,
         output_dim: usize,
-        mut activations: Vec<Activation>,
+        activations: Vec<Activation>,
     ) -> Result<Self, String> {
         if hidden_layers.len() + 1 != activations.len() {
             return Err(format!(
